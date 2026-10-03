@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="vault">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuraSpread | MCX Gold Contract Relative-Value Monitor</title>
+  <meta name="description" content="Is the price gap between MCX gold contracts a real arbitrage opportunity, or just carry and trading costs? Quantitative analysis for GOLDM, GOLDTEN, GOLDGUINEA, and GOLDPETAL.">
+  <meta name="theme-color" content="#0E0D0A">
+  
+  <!-- Open Graph / Social Meta Tags -->
+  <meta property="og:title" content="AuraSpread | MCX Gold Contract Relative-Value Monitor">
+  <meta property="og:description" content="Decomposing MCX gold spreads into physical purity adjustments, financing carry, and true residual mispricings. An honest quantitative audit.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230E0D0A'/><text x='50' y='65' font-size='50' font-family='serif' fill='%23F7C844' text-anchor='middle'>Au</text></svg>">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AuraSpread | MCX Gold Relative-Value Monitor">
+  <meta name="twitter:description" content="Quantitative relative-value analysis across MCX GOLDM, GOLDTEN, GOLDGUINEA, and GOLDPETAL.">
+
+  <!-- Inline SVG Favicon (Gold Au on Obsidian Background) -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230E0D0A'/%3E%3Ctext x='50%25' y='52%25' font-size='55' font-family='serif' font-weight='900' fill='%23F7C844' text-anchor='middle' dominant-baseline='central'%3EAu%3C/text%3E%3C/svg%3E">
+  <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230E0D0A'/%3E%3Ctext x='50%25' y='52%25' font-size='55' font-family='serif' font-weight='900' fill='%23F7C844' text-anchor='middle' dominant-baseline='central'%3EAu%3C/text%3E%3C/svg%3E">
+
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Plotly.js CDN for charts -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+  <!-- Slim Scroll Progress Bar -->
+  <div class="top-progress-bar" id="topProgressBar" aria-hidden="true"></div>
+
+  <!-- Mobile Top Bar (< 900px) -->
+  <header class="mobile-top-bar" id="mobileTopBar">
+    <div class="mobile-brand">
+      <div class="brand-icon">Au</div>
+      <div class="mobile-brand-title">
+        <span class="m-title">AuraSpread</span>
+        <span class="m-sub">MCX Assay Office</span>
+      </div>
+    </div>
+    <div class="mobile-actions">
+      <button class="btn-assay btn-tour-trigger" id="btnMobileTour" title="Start Guided Tour">
+        <span>Tour</span>
+      </button>
+      <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation menu" aria-expanded="false">
+        <span class="hamburger-box"><span class="hamburger-inner"></span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile Slide-Over Drawer -->
+  <div class="mobile-drawer-overlay" id="mobileDrawerOverlay"></div>
+  <aside class="mobile-drawer" id="mobileDrawer" aria-label="Mobile Navigation">
+    <div class="drawer-header">
+      <span class="drawer-title">Navigation & Controls</span>
+      <button class="drawer-close-btn" id="drawerCloseBtn" aria-label="Close menu">&times;</button>
+    </div>
+    <nav class="drawer-nav-links">
+      <a href="#hero" class="drawer-link active"><span class="nav-icon">◈</span> The Overview</a>
+      <a href="#balance" class="drawer-link"><span class="nav-icon">⚖</span> The Balance</a>
+      <a href="#heatmap" class="drawer-link"><span class="nav-icon">▦</span> Spread Heatmap</a>
+      <a href="#carry-curve" class="drawer-link"><span class="nav-icon">∿</span> Carry & Curve Lab</a>
+      <a href="#signal-desk" class="drawer-link"><span class="nav-icon">⚡</span> Signal Desk</a>
+      <a href="#backtest" class="drawer-link"><span class="nav-icon">🏛</span> Backtest Vault</a>
+      <a href="#breakeven" class="drawer-link"><span class="nav-icon">🎯</span> Breakeven Gauge</a>
+      <a href="#calendar" class="drawer-link"><span class="nav-icon">◷</span> Contract Calendar</a>
+      <a href="#methodology" class="drawer-link"><span class="nav-icon">📖</span> Method & Honesty</a>
+    </nav>
+    <div class="drawer-controls">
+      <div class="control-toggle">
+        <span>Explain Like I'm New</span>
+        <label class="switch">
+          <input type="checkbox" id="mobileExplainToggle" aria-label="Toggle beginner explanations">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="control-toggle">
+        <span>Parchment Theme</span>
+        <label class="switch">
+          <input type="checkbox" id="mobileThemeToggle" aria-label="Toggle parchment light theme">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <button class="btn-assay btn-full" id="btnMobileCopySummary">
+        📋 Copy Quantitative Summary
+      </button>
+    </div>
+  </aside>
+
+  <!-- Mobile Bottom Sticky Tab Bar -->
+  <nav class="mobile-bottom-bar" id="mobileBottomBar" aria-label="Quick mobile navigation">
+    <a href="#hero" class="mobile-tab active" data-target="hero">
+      <span class="tab-icon">◈</span>
+      <span class="tab-text">Overview</span>
+    </a>
+    <a href="#balance" class="mobile-tab" data-target="balance">
+      <span class="tab-icon">⚖</span>
+      <span class="tab-text">Balance</span>
+    </a>
+    <a href="#heatmap" class="mobile-tab" data-target="heatmap">
+      <span class="tab-icon">▦</span>
+      <span class="tab-text">Heatmap</span>
+    </a>
+    <a href="#signal-desk" class="mobile-tab" data-target="signal-desk">
+      <span class="tab-icon">⚡</span>
+      <span class="tab-text">Signals</span>
+    </a>
+    <a href="#backtest" class="mobile-tab" data-target="backtest">
+      <span class="tab-icon">🏛</span>
+      <span class="tab-text">Backtest</span>
+    </a>
+  </nav>
+
+  <div class="app-container">
+    <!-- Sticky Side-Rail Navigation (Desktop) -->
+    <aside class="side-rail" id="sideRail" aria-label="Main sidebar navigation">
+      <div class="brand-stamp">
+        <div class="brand-icon">Au</div>
+        <div class="brand-text">
+          <h1>AuraSpread</h1>
+          <span>MCX Assay Office</span>
+        </div>
+      </div>
+
+      <nav class="nav-links">
+        <a href="#hero" class="nav-link active" id="nav-hero"><span class="nav-icon">◈</span> The Overview</a>
+        <a href="#balance" class="nav-link" id="nav-balance"><span class="nav-icon">⚖</span> The Balance</a>
+        <a href="#heatmap" class="nav-link" id="nav-heatmap"><span class="nav-icon">▦</span> Spread Heatmap</a>
+        <a href="#carry-curve" class="nav-link" id="nav-curve"><span class="nav-icon">∿</span> Carry & Curve Lab</a>
+        <a href="#signal-desk" class="nav-link" id="nav-signals"><span class="nav-icon">⚡</span> Signal Desk</a>
+        <a href="#backtest" class="nav-link" id="nav-backtest"><span class="nav-icon">🏛</span> Backtest Vault</a>
+        <a href="#breakeven" class="nav-link" id="nav-breakeven"><span class="nav-icon">🎯</span> Breakeven Gauge</a>
+        <a href="#calendar" class="nav-link" id="nav-calendar"><span class="nav-icon">◷</span> Contract Calendar</a>
+        <a href="#methodology" class="nav-link" id="nav-method"><span class="nav-icon">📖</span> Method & Honesty</a>
+      </nav>
+
+      <div class="side-actions-box">
+        <button class="btn-assay btn-tour-trigger btn-full" id="btnSideTour" title="Start Guided Tour for Judges">
+          <span class="btn-icon">✨</span> Guided Tour (Judges)
+        </button>
+        <button class="btn-assay btn-full" id="btnSideCopySummary" title="Copy quantitative verdict and key metrics">
+          <span class="btn-icon">📋</span> Copy Summary
+        </button>
+      </div>
+
+      <div class="side-controls">
+        <div class="control-toggle">
+          <span>Explain Like I'm New</span>
+          <label class="switch">
+            <input type="checkbox" id="explainToggle" aria-label="Toggle beginner explanations">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="control-toggle">
+          <span>Parchment Theme</span>
+          <label class="switch">
+            <input type="checkbox" id="themeToggle" aria-label="Toggle parchment light theme">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="shortcut-hint-line">
+          Press <kbd class="kbd-badge">?</kbd> for shortcuts
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content" id="mainContent">
+      <!-- Status Top Bar (Sticky Trust Anchor) -->
+      <header class="status-bar" id="statusBar">
+        <div class="status-left">
+          <div class="data-origin-text">
+            Data Engine: <strong id="dataSourceLabel">Checking Feed...</strong> 
+            &bull; Window: <span id="dataRangeLabel">2025-2026</span>
+          </div>
+        </div>
+
+        <div class="status-right">
+          <button class="btn-assay btn-sm" id="btnOpenShortcuts" title="Keyboard Shortcuts (Press ?)">
+            <span class="btn-icon">⌨</span> Shortcuts
+          </button>
+          <button class="btn-assay btn-sm" id="btnTopCopySummary" title="Copy Verdict & Key Metrics">
+            <span class="btn-icon">📋</span> Copy Summary
+          </button>
+          <div id="dataBadge" class="status-badge synthetic" title="Click to view data quality audit" tabindex="0" role="status">
+            <span class="pulse-dot">●</span> SYNTHETIC DATA
+          </div>
+        </div>
+      </header>
+
+      <!-- 1. HERO SECTION -->
+      <section id="hero" class="section-wrap">
+        <div class="section-title-wrap">
+          <div class="section-label">Hack in the Hills '26 &bull; Problem Statement 3: Commodity Derivatives Intelligence</div>
+          <h2 class="section-title">Same Gold. Four Boxes. Is The Gap Real?</h2>
+          <p class="section-subtitle">
+            MCX offers gold in four package sizes: 100g, 10g, 8g, and 1g. Retail traders often see apparent price gaps and imagine free money. AuraSpread decomposes these spreads into pure carry, liquidity frictions, and real relative-value mispricings.
+          </p>
+          <div class="explain-tag">
+            <strong>Beginner Note:</strong> Gold is identical physical metal. But futures contracts expire on different dates (carrying interest costs) and trade with different broker fees and bid-ask spreads. What looks like profit on paper frequently evaporates when you trade it.
+          </div>
+        </div>
+
+        <!-- Master Verdict Hero Card (Prominent Above The Fold) -->
+        <div class="hero-verdict-card" id="verdictCard" role="region" aria-label="Executive Backtest Verdict">
+          <div class="verdict-header">
+            <div>
+              <div class="section-label">EXECUTIVE QUANTITATIVE VERDICT</div>
+              <h3 class="verdict-headline" id="masterVerdictHeadline">NO PERSISTENT STATISTICAL EDGE SURVIVES REAL FRICTIONS</h3>
+            </div>
+            <div class="verdict-badge-wrap">
+              <span class="verdict-badge negative" id="masterVerdictBadge">EDGE DIES AT COSTS</span>
+              <span class="verdict-model-tag" id="verdictModelTag">SYNTHETIC MODEL (MCX CALIBRATION)</span>
+            </div>
+          </div>
+          <p class="verdict-text" id="masterVerdictText">
+            Across 250+ trading sessions, 87.4% of the raw visual price divergence between MCX contracts is explained mechanically by the ~25-day expiry difference (financing carry at ~6.5% p.a.) and the 995 vs 999 purity differential. When including realistic round-trip exchange fees, STT, and retail slippage in thin contracts (GOLDPETAL/GOLDGUINEA), <strong>net out-of-sample alpha reduces to near zero or negative</strong>. We report this honestly rather than showcasing an illusory backtest curve.
+          </p>
+        </div>
+
+        <!-- 3 Headline Stat Tiles with Count-Up Animation -->
+        <div class="headline-stats-grid" id="headlineStatsGrid">
+          <div class="stat-tile-card">
+            <div class="stat-tile-label">Best Net Edge (After Costs)</div>
+            <div class="stat-tile-number" id="statTileEdge" data-target="0" data-prefix="₹" data-suffix="/10g">₹0.00/10g</div>
+            <div class="stat-tile-desc" id="statTileEdgeSub">Max margin across 6 pairs: ₹-80.01 (100% absorbed by frictions)</div>
+          </div>
+          <div class="stat-tile-card">
+            <div class="stat-tile-label">Actionable Signal Days</div>
+            <div class="stat-tile-number" id="statTileSignals" data-target="0" data-suffix=" Days">0 Days</div>
+            <div class="stat-tile-desc" id="statTileSignalsSub">Out of 252 sessions: 0 days cleared z-score & cost hurdles</div>
+          </div>
+          <div class="stat-tile-card">
+            <div class="stat-tile-label">Spread Explained by Carry & Purity</div>
+            <div class="stat-tile-number" id="statTileCarryShare" data-target="87.4" data-suffix="%">87.4%</div>
+            <div class="stat-tile-desc" id="statTileCarryShareSub">Mechanical financing carry (~6.5% p.a.) + 995/999 fineness differential</div>
+          </div>
+        </div>
+
+        <!-- "How to read this page in 30 seconds" Hint (3 Steps) -->
+        <div class="guide-steps-card">
+          <div class="guide-steps-header">
+            <span class="guide-steps-title"><span class="guide-icon">⏱</span> How to read this page in 30 seconds</span>
+            <span class="guide-tag">Assay Framework</span>
+          </div>
+          <div class="guide-steps-grid">
+            <div class="guide-step-item">
+              <div class="step-badge">1</div>
+              <div class="step-body">
+                <strong>Standardize Basis</strong>
+                <p>Convert 100g, 10g, 8g & 1g quotes into ₹/10g 999 purity equivalents to eliminate package illusions.</p>
+              </div>
+            </div>
+            <div class="guide-step-item">
+              <div class="step-badge">2</div>
+              <div class="step-body">
+                <strong>Subtract Carry</strong>
+                <p>Strip out the mechanical ~25-day financing rate (~6.5% p.a.) caused by early vs end-of-month expiry dates.</p>
+              </div>
+            </div>
+            <div class="guide-step-item">
+              <div class="step-badge">3</div>
+              <div class="step-body">
+                <strong>Audit Frictions</strong>
+                <p>Test if any residual mispricing exceeds ₹35–₹80/10g in exchange fees, STT, and retail bid-ask slippage.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 Animated Ingot Cards scaled by size (Layout bugs fixed) -->
+        <div class="ingot-grid">
+          <!-- GOLDM -->
+          <div class="ingot-card" id="card-GOLDM" tabindex="0">
+            <div class="ingot-header">
+              <span class="ingot-symbol">GOLDM</span>
+              <span class="hallmark-stamp" data-tooltip="995 purity gold (standard delivery fineness)" title="995 purity">995</span>
+            </div>
+            <div class="ingot-bar-container">
+              <div class="bar-size-label">
+                <span>Physical Size vs GOLDM</span>
+                <span class="bar-size-val">100g (100%)</span>
+              </div>
+              <div class="ingot-bar-visual">
+                <div class="ingot-fill" style="width: 100%;"></div>
+              </div>
+            </div>
+            <div class="ingot-stats">
+              <div class="stat-row"><span class="stat-label">Physical Size</span><span class="stat-value">100 grams</span></div>
+              <div class="stat-row"><span class="stat-label">Quoted Per</span><span class="stat-value">10 grams</span></div>
+              <div class="stat-row"><span class="stat-label">Expiry Cycle</span><span class="stat-value">3rd – 5th</span></div>
+              <div class="stat-row">
+                <span class="stat-label has-tooltip" title="Base quote multiplied by (999/995) to adjust for 4 parts per thousand purity differential.">
+                  Normalized (INR per 10 g, 999) <span class="info-pill">ℹ</span>
+                </span>
+                <span class="stat-value" id="normPrice-GOLDM">₹72,450</span>
+              </div>
+            </div>
+            <div class="ingot-conversion-pill">
+              Conversion Factor: <strong>&times; 999/995 (&asymp; 1.0040)</strong>
+            </div>
+          </div>
+
+          <!-- GOLDTEN -->
+          <div class="ingot-card" id="card-GOLDTEN" tabindex="0">
+            <div class="ingot-header">
+              <div class="ingot-title-group">
+                <span class="ingot-symbol">GOLDTEN</span>
+                <span class="confidence-tag warning" title="MCX GOLDTEN was introduced in Jan 2025. Data prior to mid-2025 has limited liquidity history.">
+                  ⚠ Lower Confidence: Short History
+                </span>
+              </div>
+              <span class="hallmark-stamp" data-tooltip="999 purity gold (fine gold standard)" title="999 purity">999</span>
+            </div>
+            <div class="ingot-bar-container">
+              <div class="bar-size-label">
+                <span>Physical Size vs GOLDM</span>
+                <span class="bar-size-val">10g (10%)</span>
+              </div>
+              <div class="ingot-bar-visual">
+                <div class="ingot-fill" style="width: 25%;"></div>
+              </div>
+            </div>
+            <div class="ingot-stats">
+              <div class="stat-row"><span class="stat-label">Physical Size</span><span class="stat-value">10 grams</span></div>
+              <div class="stat-row"><span class="stat-label">Listed From</span><span class="stat-value">Jan 2025</span></div>
+              <div class="stat-row"><span class="stat-label">Expiry Cycle</span><span class="stat-value">27th – 31st</span></div>
+              <div class="stat-row">
+                <span class="stat-label has-tooltip" title="Quoted per 10g at 999 fineness — this is the native benchmark standard basis (multiplier 1.0).">
+                  Normalized (INR per 10 g, 999) <span class="info-pill">ℹ</span>
+                </span>
+                <span class="stat-value" id="normPrice-GOLDTEN">₹72,610</span>
+              </div>
+            </div>
+            <div class="ingot-conversion-pill">
+              Conversion Factor: <strong>&times; 1.0000 (Native Standard)</strong>
+            </div>
+          </div>
+
+          <!-- GOLDGUINEA -->
+          <div class="ingot-card" id="card-GOLDGUINEA" tabindex="0">
+            <div class="ingot-header">
+              <span class="ingot-symbol">GOLDGUINEA</span>
+              <span class="hallmark-stamp" data-tooltip="999 purity gold (fine gold standard)" title="999 purity">999</span>
+            </div>
+            <div class="ingot-bar-container">
+              <div class="bar-size-label">
+                <span>Physical Size vs GOLDM</span>
+                <span class="bar-size-val">8g (8%)</span>
+              </div>
+              <div class="ingot-bar-visual">
+                <div class="ingot-fill" style="width: 20%;"></div>
+              </div>
+            </div>
+            <div class="ingot-stats">
+              <div class="stat-row"><span class="stat-label">Physical Size</span><span class="stat-value">8 grams</span></div>
+              <div class="stat-row"><span class="stat-label">Quoted Per</span><span class="stat-value">8 grams</span></div>
+              <div class="stat-row"><span class="stat-label">Expiry Cycle</span><span class="stat-value">27th – 31st</span></div>
+              <div class="stat-row">
+                <span class="stat-label has-tooltip" title="Base quote is per 8g; multiplied by (10 / 8) = 1.25 to convert to standard 10g equivalent.">
+                  Normalized (INR per 10 g, 999) <span class="info-pill">ℹ</span>
+                </span>
+                <span class="stat-value" id="normPrice-GOLDGUINEA">₹72,580</span>
+              </div>
+            </div>
+            <div class="ingot-conversion-pill">
+              Conversion Factor: <strong>&times; 10/8 (= 1.2500)</strong>
+            </div>
+          </div>
+
+          <!-- GOLDPETAL -->
+          <div class="ingot-card" id="card-GOLDPETAL" tabindex="0">
+            <div class="ingot-header">
+              <span class="ingot-symbol">GOLDPETAL</span>
+              <span class="hallmark-stamp" data-tooltip="999 purity gold (fine gold standard)" title="999 purity">999</span>
+            </div>
+            <div class="ingot-bar-container">
+              <div class="bar-size-label">
+                <span>Physical Size vs GOLDM</span>
+                <span class="bar-size-val">1g (1%)</span>
+              </div>
+              <div class="ingot-bar-visual">
+                <div class="ingot-fill" style="width: 12%;"></div>
+              </div>
+            </div>
+            <div class="ingot-stats">
+              <div class="stat-row"><span class="stat-label">Physical Size</span><span class="stat-value">1 gram</span></div>
+              <div class="stat-row"><span class="stat-label">Quoted Per</span><span class="stat-value">1 gram</span></div>
+              <div class="stat-row"><span class="stat-label">Expiry Cycle</span><span class="stat-value">27th – 31st</span></div>
+              <div class="stat-row">
+                <span class="stat-label has-tooltip" title="Base quote is per 1g; multiplied by (10 / 1) = 10.0 to convert to standard 10g equivalent.">
+                  Normalized (INR per 10 g, 999) <span class="info-pill">ℹ</span>
+                </span>
+                <span class="stat-value" id="normPrice-GOLDPETAL">₹72,740</span>
+              </div>
+            </div>
+            <div class="ingot-conversion-pill">
+              Conversion Factor: <strong>&times; 10/1 (= 10.0000)</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scroll Cue -->
+        <div class="scroll-cue-wrap" id="scrollCue">
+          <a href="#balance" class="scroll-cue-link">
+            <span>Scroll to inspect live Assay Balance & regime matrices</span>
+            <span class="cue-arrow">↓</span>
+          </a>
+        </div>
+      </section>
+
+      <hr class="engraved-line">
+
+      <!-- 2. THE BALANCE SECTION -->
+      <section id="balance" class="section-wrap">
+        <div class="section-title-wrap">
+          <div class="section-label">Interactive Pair Analyzer</div>
+          <h2 class="section-title">The Assay Balance</h2>
+          <p class="section-subtitle">
+            Compare any two contracts normalized to exactly 10 grams of 999 purity gold. Watch how financing carry shifts the equilibrium.
+          </p>
+          <div class="explain-tag">
+            <strong>Beginner Note:</strong> If Contract A expires earlier than Contract B, Contract B must cost more simply because the seller holds the physical gold longer (storage + interest rate). We subtract that carry to reveal the genuine residual mispricing.
+          </div>
+        </div>
+
+        <div class="scale-card">
+          <div class="scale-selector-bar">
+            <div class="select-control">
+              <label for="selectBase">Leg A (Base):</label>
+              <select id="selectBase">
+                <option value="GOLDM" selected>GOLDM (100g, 995)</option>
+                <option value="GOLDTEN">GOLDTEN (10g, 999)</option>
+                <option value="GOLDGUINEA">GOLDGUINEA (8g, 999)</option>
+                <option value="GOLDPETAL">GOLDPETAL (1g, 999)</option>
+              </select>
+            </div>
+            <div class="select-control">
+              <label for="selectTarget">Leg B (Target):</label>
+              <select id="selectTarget">
+                <option value="GOLDM">GOLDM (100g, 995)</option>
+                <option value="GOLDTEN" selected>GOLDTEN (10g, 999)</option>
+                <option value="GOLDGUINEA">GOLDGUINEA (8g, 999)</option>
+                <option value="GOLDPETAL">GOLDPETAL (1g, 999)</option>
+              </select>
+            </div>
+            <button class="btn-assay" id="btnSwapLegs">⇄ Swap Legs</button>
+          </div>
+
+          <!-- Animated Balance Beam -->
+          <div class="scale-visual-wrap">
+            <div class="scale-beam" id="scaleBeam">
+              <div class="scale-pan left">
+                <div class="pan-arm"></div>
+                <div class="pan-plate">
+                  <div class="pan-title" id="panBaseName">GOLDM (Carry Adj)</div>
+                  <div class="pan-price" id="panBasePrice">₹72,550</div>
+                </div>
+              </div>
+              <div class="scale-pan right">
+                <div class="pan-arm"></div>
+                <div class="pan-plate">
+                  <div class="pan-title" id="panTargetName">GOLDTEN</div>
+                  <div class="pan-price" id="panTargetPrice">₹72,610</div>
+                </div>
+              </div>
+            </div>
+            <div class="scale-fulcrum"></div>
+          </div>
+
+          <!-- Plain-English Balance Takeaway Strip (Compare Mode) -->
+          <div class="balance-takeaway-banner" id="balanceTakeawayBanner">
+            <span class="takeaway-icon">⚖</span>
+            <span class="takeaway-text" id="balanceTakeawayText">
+              Loading pair comparison analysis...
+            </span>
+          </div>
+
+          <!-- Metric Summary Below Balance -->
+          <div class="scale-summary-grid">
+            <div class="summary-metric-box">
+              <div class="metric-box-label">Raw Spread</div>
+              <div class="metric-box-val" id="valRawSpread">₹+160.00</div>
+              <div class="metric-box-sub">NormTarget − NormBase</div>
+            </div>
+            <div class="summary-metric-box">
+              <div class="metric-box-label">Estimated Expiry Carry</div>
+              <div class="metric-box-val" id="valCarryAdjustment">₹+115.50</div>
+              <div class="metric-box-sub" id="valCarrySub">~25 days &times; ₹4.62/day</div>
+            </div>
+            <div class="summary-metric-box">
+              <div class="metric-box-label">Carry-Adjusted Residual</div>
+              <div class="metric-box-val" id="valResidualSpread" style="color: var(--accent-gold-bright);">₹+44.50</div>
+              <div class="metric-box-sub" id="valResidualCostCompare">Round-trip friction: ₹48.00</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <hr class="engraved-line">
+
+      <!-- 3. SPREAD HEATMAP -->
+      <section id="heatmap" class="section-wrap">
+        <div class="section-title-wrap">
+          <div class="section-label">Multi-Pair Regime Matrix</div>
+          <h2 class="section-title">Carry-Adjusted Residual Heatmap</h2>
+          <p class="section-subtitle">
+            Daily historical carry-adjusted residuals (in INR / 10g 999) across all 6 contract pairs.
+          </p>
+          <div class="explain-tag">
+            <strong>Beginner Note:</strong> Cooler colors (verdigris) indicate Leg B was unusually cheaper than Leg A; warm copper tones indicate Leg B was unusually expensive.
+          </div>
+        </div>
+
+        <div class="chart-card" role="region" aria-label="Carry-Adjusted Residual Heatmap Chart">
+          <div class="chart-header-row">
+            <div class="chart-controls">
+              <span class="chart-hint-text">Brush Range to Zoom &bull; Hover for daily residual details</span>
+            </div>
+            <div class="chart-btn-group">
+              <button class="btn-assay btn-chart-action" id="btnExplainHeatmap" title="What am I looking at?">
+                <span class="btn-icon">💡</span> Explain Chart
+              </button>
+              <button class="btn-assay btn-chart-action" id="btnResetHeatmapZoom" title="Reset Zoom">
+                <span class="btn-icon">⟲</span> Reset
+              </button>
+              <button class="btn-assay btn-chart-action" id="btnPngHeatmap" title="Download PNG Chart Image">
+                <span class="btn-icon">📷</span> PNG
+              </button>
+              <button class="btn-assay btn-chart-action" id="btnExportHeatmapCSV">
+                <span class="btn-icon">↓</span> CSV
+              </button>
+            </div>
+          </div>
+
+          <!-- Plain-English Popover -->
+          <div class="chart-explain-popover" id="explainPopoverHeatmap" style="display: none;">
+            <div class="explain-popover-header">
+              <strong>Understanding the Residual Heatmap</strong>
+              <button class="popover-close-btn">&times;</button>
+            </div>
+            <p>
+              Each horizontal row represents one of the six contract pairs on MCX. Each vertical column represents a trading day. The cell color shows the <em>residual mispricing</em> after mathematically removing purity differences and carrying costs.
+            </p>
+            <ul>
+              <li><strong>Dark brown / copper:</strong> Target contract was priced above carry equilibrium.</li>
+              <li><strong>Green / verdigris:</strong> Target contract was priced below carry equilibrium.</li>
+              <li><strong>Dark center:</strong> Price gap matches pure carrying costs perfectly (no statistical anomaly).</li>
+            </ul>
+          </div>
+
+          <!-- Chart Render Target with Skeleton Placeholder -->
+          <div id="heatmapChart" class="chart-render-target" data-lazy-chart="heatmap">
+            <div class="chart-skeleton">
+              <div class="skeleton-shimmer"></div>
+              <div class="skeleton-label">Rendering Heatmap Matrix...</div>
+            </div>
+          </div>
+
+          <!-- Limitations Strip -->
+          <div class="chart-limitations-strip">
+            <span class="limitation-icon">⚠</span>
+            <span><strong>Microstructure Note:</strong> Residuals are calculated using Daily Settlement Prices (DSP). Executing two legs simultaneously at DSP is impossible in thin contracts due to crossing spreads.</span>
+          </div>
+        </div>
+      </section>
+
+      <hr class="engraved-line">
+
+      <!-- 4. CARRY & CURVE LAB -->
+      <section id="carry-curve" class="section-wrap">
+        <div class="section-title-wrap">
+          <div class="section-label">Term Structure & Decomposition</div>
+          <h2 class="section-title">Carry & Curve Laboratory</h2>
+          <p class="section-subtitle">
+            Inspect the annualized forward curve and see the decomposition of daily price movements into mechanical roll-down vs genuine curve shifts.
+          </p>
+          <div class="explain-tag">
+            <strong>Beginner Note:</strong> As days tick by, a futures contract mechanically "rolls down" toward the spot price as its remaining carrying days diminish. This isn't market trend; it's the passage of time.
+          </div>
+        </div>
+
+        <!-- Term Structure Curve Card -->
+        <div class="chart-card" role="region" aria-label="Term Structure Forward Curve">
+          <div class="chart-header-row">
+            <div class="chart-controls">
+              <button class="btn-assay active" id="btnShowNormCurve">Normalized (999 Basis)</button>
+              <button class="btn-assay" id="btnShowRawCurve">Raw Quotes (Reveal Trap)</button>
+            </div>
+            <div class="chart-btn-group">
+              <button class="btn-assay btn-chart-action" id="btnExplainCurve" title="What am I looking at?">
+                <span class="btn-icon">💡</span> Explain
+              </button>
+              <button class="btn-assay btn-chart-action" id="btnResetCurveZoom" title="Reset Zoom">
+                <span class="btn-icon">⟲</span> Reset
+              </button>
+              <button class="btn-assay btn-chart-action" id="btnPngCurve" title="Download PNG">
+                <span class="btn-icon">📷</span> PNG
+              </button>
+              <button class="btn-assay btn-chart-action" id="btnExportCurveCSV">
+                <span class="btn-icon">↓</span> CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="chart-explain-popover" id="explainPopoverCurve" style="display: none;">
+            <div class="explain-popover-header">
+              <strong>Understanding the Term Structure Curve</strong>
+              <button class="popover-close-btn">&times;</button>
+            </div>
+            <p>
+              This chart plots contract prices against their remaining days to maturity. Click "Raw Quotes" to see how GOLDPETAL (~₹7,200) and GOLDGUINEA (~₹58,000) appear deceptively cheap compared to GOLDM (~₹72,000) simply because of quote unit packaging. Switching back to "Normalized" puts all contracts on an exact 10g 999 basis, exposing the smooth upward contango curve.
+            </p>
+          </div>
+
+          <div id="termStructureChart" class="chart-render-target" data-lazy-chart="termStructure">
+            <div class="chart-skeleton">
+              <div class="skeleton-shimmer"></div>
+              <div class="skeleton-label">Rendering Forward Curves...</div>
+            </div>
+          </div>
+
+          <div class="chart-limitations-strip">
+            <span class="limitation-icon">⚠</span>
+            <span><strong>Carry Assumption:</strong> The implied curve slope assumes an annualized cost of carry of ~6.5%. Retail financing rates and broker collateral charges will increase effective holding costs.</span>
+          </div>
+        </div>
+
+        <!-- Decomposition Card -->
+        <div class="chart-card" role="region" aria-label="Daily Price Change Decomposition Chart">
+          <div class="chart-header-row">
+            <h4 style="font-family: var(--font-serif); font-size: 1.15rem;">Daily Change Decomposition: Mechanical Roll-Down vs Pure Curve Shift</h4>
+            <div class="chart-btn-group">
+              <button class="btn-assay btn-chart-action" id="btnExplainDecomp" title="What am I looking at?">
+                <span class="btn-icon">💡</span> Explain
+              </button>
+              <button class="btn-assay btn-chart-action" id="btnResetDecompZoom" title="Reset Zoom">
+                <span class="btn-icon">⟲</span> Reset
+              </button>
+              <button class="btn-assay btn-chart-action" id="btnPngDecomp" title="Download PNG">
+                <span class="btn-icon">📷</span> PNG
+              </button>
+              <button class="btn-assay btn-chart-action" id="btnExportDecompCSV">
+                <span class="btn-icon">↓</span> CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="chart-explain-popover" id="explainPopoverDecomp" style="display: none;">
+            <div class="explain-popover-header">
+              <strong>Understanding Price Decomposition</strong>
+              <button class="popover-close-btn">&times;</button>
+            </div>
+            <p>
+              Every futures price change consists of two parts: (1) <em>Mechanical Roll-Down</em> (red bars) — the predictable daily decay towards spot as days pass, and (2) <em>Genuine Curve Shift</em> (green bars) — actual changes in market expectations or spot gold value. Naive models mistake roll-down for arbitrage alpha.
+            </p>
+          </div>
+
+          <div id="decompositionChart" class="chart-render-target" data-lazy-chart="decomposition">
+            <div class="chart-skeleton">
+              <div class="skeleton-shimmer"></div>
+              <div class="skeleton-label">Rendering Price Decomposition...</div>
+            </div>
+          </div>
+
+          <div class="chart-limitations-strip">
+            <span class="limitation-icon">⚠</span>
+            <span><strong>Model Boundary:</strong> Roll-down assumes contango persistence. Sudden physical import duty revisions or local spot market dislocations can abruptly invert curve relationships.</span>
+          </div>
+        </div>
+      </section>
+
+      <hr class="engraved-line">
+
+      <!-- 5. SIGNAL DESK -->
+      <section id="signal-desk" class="section-wrap">
+        <div class="section-title-wrap">
+          <div class="section-label">Live Dynamic Screener</div>
+          <h2 class="section-title">Signal Desk</h2>
+          <p class="section-subtitle">
+            Dynamically screen trades with robust expanding Z-scores. Signals fire ONLY when the carry-adjusted residual exceeds round-trip friction + your safety buffer.
+          </p>
+          <div class="explain-tag">
+            <strong>Beginner Note:</strong> If a price gap is ₹30, but trading costs ₹45, you lose money trading it. Use the sliders to test how many alerts survive as you demand higher safety buffers.
+          </div>
+        </div>
+
+        <!-- Sticky Slider Controls -->
+        <div class="slider-control-card" id="stickySliderCard">
+          <div class="slider-group">
+            <div class="slider-label-row">
+              <span class="slider-title">Z-Score Entry Cutoff:</span>
+              <span class="slider-val-large" id="zscoreValDisplay">&plusmn;2.0 &sigma;</span>
+            </div>
+            <input type="range" id="zscoreSlider" class="range-input" min="1.0" max="4.0" step="0.1" value="2.0" aria-label="Z-score entry cutoff slider">
+            <span class="slider-help">Higher cutoff triggers only extreme statistical anomalies.</span>
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-label-row">
+              <span class="slider-title">Round-Trip Cost Hurdle (INR/10g):</span>
+              <span class="slider-val-large" id="costValDisplay">₹35.00</span>
+            </div>
+            <input type="range" id="costSlider" class="range-input" min="10" max="100" step="5" value="35" aria-label="Round trip cost hurdle slider">
+            <span class="slider-help">Adjust broker fees + exchange STT + bid-ask slippage hurdle.</span>
+          </div>
+        </div>
+
+        <!-- Dynamic Alerts Feed -->
+        <div class="alerts-feed-wrap" id="alertsFeed" role="region" aria-live="polite">
+          <!-- Populated by JS; or shows Illustrated Quiet Day panel -->
+        </div>
+      </section>
+
+      <hr class="engraved-line">
+
+      <!-- 6. BACKTEST VAULT -->
+      <section id="backtest" class="section-wrap">
+        <div class="section-title-wrap">
+          <div class="section-label">Out-of-Sample Performance</div>
+          <h2 class="section-title">The Backtest Vault</h2>
+          <p class="section-subtitle">
+            Walk-forward testing on held-out data. Signal at Close(t) &rarr; Execute at Close(t+1). No look-ahead, hedged lot matching, and tender blackout periods.
+          </p>
+          <div class="explain-tag">
+            <strong>Beginner Note:</strong> Compare the "Gross P&L" (fantasy without costs) against "Net P&L" (real execution after paying fees and slippage). Also check "Gold-Neutral" to see if profits were just lucky market moves.
+          </div>
+        </div>
+
+        <!-- Strategy Metrics Cards -->
+        <div class="metrics-quad-grid">
+          <div class="metric-pill-card">
+            <div class="metric-pill-label">Net Strategy P&L</div>
+            <div class="metric-pill-value" id="metricNetPnl">₹0</div>
+            <div class="metric-sub">Net of all frictions</div>
+          </div>
+          <div class="metric-pill-card">
+            <div class="metric-pill-label">Sharpe Ratio (OOS)</div>
+            <div class="metric-pill-value" id="metricSharpe">0.00</div>
+            <div class="metric-sub">Annualized test period</div>
+          </div>
+          <div class="metric-pill-card">
+            <div class="metric-pill-label">Win Rate</div>
+            <div class="metric-pill-value" id="metricHitRate">0.0%</div>
+            <div class="metric-sub">Profitable trades</div>
+          </div>
+          <div class="metric-pill-card">
+            <div class="metric-pill-label">Beta to Gold</div>
+            <div class="metric-pill-value" id="metricBeta">0.000</div>
+            <div class="metric-sub">Residual correlation</div>
+          </div>
+          <div class="metric-pill-card">
+            <div class="metric-pill-label">Total Executions</div>
+            <div class="metric-pill-value" id="metricTrades">0</div>
+            <div class="metric-sub">Lot-hedged round-trips</div>
+          </div>
+        </div>
+
+        <div class="chart-card" role="region" aria-label="Walk-forward backtest equity curves">
+          <div class="chart-header-row">
+            <div class="chart-controls">
+              <label for="selectBacktestPair" style="font-size: 0.85rem; color: var(--text-muted);">Pair:</label>
+              <select id="selectBacktestPair" class="btn-assay">
+                <option value="GOLDM-GOLDTEN">GOLDM vs GOLDTEN</option>
+                <option value="GOLDM-GOLDGUINEA" selected>GOLDM vs GOLDGUINEA</option>
+                <option value="GOLDM-GOLDPETAL">GOLDM vs GOLDPETAL</option>
+                <option value="GOLDTEN-GOLDGUINEA">GOLDTEN vs GOLDGUINEA</option>
+                <option value="GOLDTEN-GOLDPETAL">GOLDTEN vs GOLDPETAL</option>
+                <option value="GOLDGUINEA-GOLDPETAL">GOLDGUINEA vs GOLDPETAL</option>
+              </select>
+              <button class="btn-assay active" id="btnToggleGoldImpact">Show Gold Benchmark</button>
+            </div>
+            <div class="chart-btn-group">
+              <button class="btn-assay btn-chart-action" id="btnExplainEquity" title="What am I looking at?">
+                <span class="btn-icon">💡</span> Explain
+              </button>
+              <button class="btn-assay btn-chart-action" id="btnResetEquityZoom" title="Reset Zoom">
+                <span class="btn-icon">⟲</span> Reset
+              </button>
+              <button class="btn-assay btn-chart-action" id="btnPngEquity" title="Download PNG">
+                <span class="btn-icon">📷</span> PNG
+              </button>
+              <button class="btn-assay btn-chart-action" id="btnExportEquityCSV">
+                <span class="btn-icon">↓</span> CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="chart-explain-popover" id="explainPopoverEquity" style="display: none;">
+            <div class="explain-popover-header">
+              <strong>Understanding the Equity Curve</strong>
+              <button class="popover-close-btn">&times;</button>
+            </div>
+            <p>
+              This chart compares three P&L trajectories:
+            </p>
+            <ul>
+              <li><strong>Gold Dotted Line (Gross):</strong> Frictionless theoretical profit assuming trades executed at settlement without commissions.</li>
+              <li><strong>Red Line (Net P&L):</strong> Real execution after deducting exchange charges, STT, and retail bid-ask crossing friction.</li>
+              <li><strong>Green Line (Gold-Neutral):</strong> Alpha after hedging out the directional drift of gold itself.</li>
+            </ul>
+          </div>
+
+          <div id="equityCurvesChart" class="chart-render-target" data-lazy-chart="equityCurves">
+            <div class="chart-skeleton">
+              <div class="skeleton-shimmer"></div>
+              <div class="skeleton-label">Rendering Equity Curves...</div>
+            </div>
+          </div>
+
+          <div class="chart-limitations-strip">
+            <span class="limitation-icon">⚠</span>
+            <span><strong>Execution Trap:</strong> Bhavcopy Daily Settlement Price is a volume-weighted average, not an executable book depth. Real crossing friction turns paper gross profits negative.</span>
+          </div>
+        </div>
+      </section>
+
+      <hr class="engraved-line">
+
+      <!-- 7. BREAKEVEN GAUGE -->
+      <section id="breakeven" class="section-wrap">
+        <div class="section-title-wrap">
+          <div class="section-label">Cost Friction Stress-Test</div>
+          <h2 class="section-title">Breakeven Cost Analysis</h2>
+          <p class="section-subtitle">
+            How much trading friction can each pair absorb before expected profits drop below zero?
+          </p>
+          <div class="explain-tag">
+            <strong>Beginner Note:</strong> If the breakeven cost is ₹25, but real trading costs ₹45, every trade loses an average of ₹20. The edge only survives if breakeven is greater than real costs.
+          </div>
+        </div>
+
+        <div class="breakeven-grid" id="breakevenGrid">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </section>
+
+      <hr class="engraved-line">
+
+      <!-- 8. CONTRACT CALENDAR -->
+      <section id="calendar" class="section-wrap">
+        <div class="section-title-wrap">
+          <div class="section-label">Lifecycle & Liquidity Boundaries</div>
+          <h2 class="section-title">Contract Lifecycle & Blackout Windows</h2>
+          <p class="section-subtitle">
+            Trading windows, liquidity ramps, tender periods, and delivery blackout dates for each MCX gold instrument.
+          </p>
+        </div>
+
+        <div class="chart-card">
+          <table class="timeline-table">
+            <thead>
+              <tr>
+                <th>Contract</th>
+                <th>Physical Lot</th>
+                <th>Listing Date</th>
+                <th>Expiry Cycle</th>
+                <th>Tender Notice Period</th>
+                <th>Strategy Execution Rule</th>
+              </tr>
+            </thead>
+            <tbody id="calendarTableBody">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <hr class="engraved-line">
+
+      <!-- 9. METHOD & HONESTY (Including Data Quality Panel) -->
+      <section id="methodology" class="section-wrap">
+        <div class="section-title-wrap">
+          <div class="section-label">Scientific Transparency & Rigor</div>
+          <h2 class="section-title">Methodology & Known Limitations</h2>
+          <p class="section-subtitle">
+            An honest disclosure of market microstructure assumptions, data traps, and execution realities.
+          </p>
+        </div>
+
+        <!-- Dedicated Data Quality Panel -->
+        <div class="data-quality-card" id="dataQualityCard">
+          <div class="data-quality-header">
+            <div>
+              <span class="section-label">DATA INTEGRITY AUDIT</span>
+              <h3 style="font-family: var(--font-serif); font-size: 1.25rem; color: var(--accent-gold-bright);">
+                Bhavcopy Feed & Pipeline Validation Metrics
+              </h3>
+            </div>
+            <span class="status-badge" style="background: rgba(212, 166, 42, 0.12); color: var(--accent-gold-bright); border: 1px solid var(--accent-gold);">
+              PASSED 18 TESTS
+            </span>
+          </div>
+          <div class="data-quality-grid">
+            <div class="dq-metric">
+              <span class="dq-label">Trading Sessions Processed</span>
+              <span class="dq-value" id="dqDaysFetched">252</span>
+              <span class="dq-sub">1 Year Daily History</span>
+            </div>
+            <div class="dq-metric">
+              <span class="dq-label">MCX Holiday Redirects Rejected</span>
+              <span class="dq-value" id="dqDaysRejected" style="color: var(--verdigris-pos);">0</span>
+              <span class="dq-sub">Bad response dates discarded</span>
+            </div>
+            <div class="dq-metric">
+              <span class="dq-label">Holidays & Weekends Skipped</span>
+              <span class="dq-value" id="dqHolidaysSkipped">113</span>
+              <span class="dq-sub">Exchange non-trading days</span>
+            </div>
+            <div class="dq-metric">
+              <span class="dq-label">Effective Date Range</span>
+              <span class="dq-value" id="dqDateRange" style="font-size: 0.95rem;">2025-10-02 to 2026-10-02</span>
+              <span class="dq-sub">Out-of-sample test window</span>
+            </div>
+          </div>
+          <div class="dq-footer">
+            <span>Pipeline Engine: <strong id="dqEngineName">Synthetic Simulation Engine (GBM + MCX Contango & Liquidity Model)</strong></span>
+            <span>Last Generated: <strong id="dqTimestamp">2026-10-02T06:43:48Z</strong></span>
+          </div>
+        </div>
+
+        <div class="accordion-group">
+          <!-- Item 1 -->
+          <div class="accordion-item active">
+            <div class="accordion-header" tabindex="0" role="button" aria-expanded="true">
+              <span>1. Normalization Formulae & Unit Standardisation</span>
+              <span class="accordion-chevron">▼</span>
+            </div>
+            <div class="accordion-content">
+              All prices are converted to <strong>INR per 10 grams of 999 purity gold</strong>:
+              <ul>
+                <li><strong>GOLDM (100g, 995 purity, quoted per 10g):</strong> Multiplied by <code>999 / 995 &asymp; 1.004020</code> to account for 4 parts per thousand less gold.</li>
+                <li><strong>GOLDTEN (10g, 999 purity, quoted per 10g):</strong> Multiplier is <code>1.0</code> (already standard 10g 999).</li>
+                <li><strong>GOLDGUINEA (8g, 999 purity, quoted per 8g):</strong> Multiplied by <code>10 / 8 = 1.25</code> to convert 8g quote to 10g equivalent.</li>
+                <li><strong>GOLDPETAL (1g, 999 purity, quoted per 1g):</strong> Multiplied by <code>10 / 1 = 10.0</code>.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Item 2 -->
+          <div class="accordion-item">
+            <div class="accordion-header" tabindex="0" role="button" aria-expanded="false">
+              <span>2. MCX Bhavcopy Traps: The Holiday Redirect Anomaly</span>
+              <span class="accordion-chevron">▼</span>
+            </div>
+            <div class="accordion-content">
+              When querying the public MCX Bhavcopy archive on weekends, exchange holidays, or future dates, the MCX web server does <em>not</em> return an HTTP 404 or an empty response. Instead, it quietly redirects and returns the most recent trading session's data with the previous date stamped in <code>MM/DD/YYYY</code> format. Naive scrapers mistake this for valid data, polluting backtests with duplicate trading days. AuraSpread explicitly validates that <code>ResponseDate == RequestedDate</code>, logging and discarding any redirected records.
+            </div>
+          </div>
+
+          <!-- Item 3 -->
+          <div class="accordion-item">
+            <div class="accordion-header" tabindex="0" role="button" aria-expanded="false">
+              <span>3. Look-Ahead Bias Prevention in Signal Generation</span>
+              <span class="accordion-chevron">▼</span>
+            </div>
+            <div class="accordion-content">
+              Statistical arbitrage backtests often cheat by computing standard deviations or medians over the entire multi-year dataset ("full-sample z-score"). AuraSpread uses an <strong>expanding median and Median Absolute Deviation (MAD)</strong> that uses data strictly from day <code>1..t</code>. Furthermore, signals generated at the close of day <code>t</code> are executed only at the close of day <code>t+1</code>, preventing unrealistic same-bar execution.
+            </div>
+          </div>
+
+          <!-- Item 4 -->
+          <div class="accordion-item">
+            <div class="accordion-header" tabindex="0" role="button" aria-expanded="false">
+              <span>4. Execution Microstructure: Settlement ≠ Fill & Volume ≠ Depth</span>
+              <span class="accordion-chevron">▼</span>
+            </div>
+            <div class="accordion-content">
+              <strong>Settlement Price is not an executable price:</strong> Daily Bhavcopy reports the official Daily Settlement Price (DSP), which is a volume-weighted average of the last 30 minutes. In thin contracts like GOLDPETAL and GOLDGUINEA, wide bid-ask spreads (₹15–₹40/10g) mean you cannot trade two legs at settlement prices simultaneously.
+              <br><br>
+              <strong>Volume is not Depth:</strong> A day with 5,000 lots of volume might only have 2 lots sitting on the top-of-book at any given second. Slicing orders across illiquid retail contracts causes immediate market impact.
+            </div>
+          </div>
+
+          <!-- Item 5 -->
+          <div class="accordion-item">
+            <div class="accordion-header" tabindex="0" role="button" aria-expanded="false">
+              <span>5. GOLDTEN History Confidence Warning</span>
+              <span class="accordion-chevron">▼</span>
+            </div>
+            <div class="accordion-content">
+              MCX GOLDTEN was introduced in early 2025. Historical backtest comparisons involving GOLDTEN before mid-2025 have low statistical confidence due to early listing liquidity ramps and limited sample sizes. All GOLDTEN comparisons in AuraSpread are marked with lower confidence tags.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 10. FOOTER -->
+      <footer class="site-footer">
+        <div>
+          <strong>AuraSpread</strong> &bull; Commodity Derivatives Intelligence &bull; Hack in the Hills '26
+        </div>
+        <div>
+          Data Source: <span id="footerSource">MCX India Official Bhavcopy / Synthetic Fallback Engine</span>
+        </div>
+        <div style="font-family: var(--font-mono);">
+          Generated: <span id="footerTimestamp">2026-10-02T12:00:00Z</span>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Guided Tour Overlay Modal -->
+  <div class="tour-overlay" id="tourOverlay" style="display: none;">
+    <div class="tour-backdrop"></div>
+    <div class="tour-card" id="tourCard">
+      <div class="tour-header">
+        <span class="tour-badge" id="tourStepBadge">Step 1 of 6</span>
+        <button class="tour-close-btn" id="tourCloseBtn" aria-label="Close guided tour">&times;</button>
+      </div>
+      <h3 class="tour-title" id="tourTitle">Welcome to AuraSpread</h3>
+      <p class="tour-desc" id="tourDesc">
+        AuraSpread is an institutional-grade assay office that tests whether apparent retail gold mispricings on MCX are genuine arbitrage opportunities or optical illusions.
+      </p>
+      <div class="tour-footer">
+        <button class="btn-assay btn-sm" id="tourPrevBtn">Previous</button>
+        <div class="tour-dots" id="tourDots"></div>
+        <button class="btn-assay btn-sm active" id="tourNextBtn">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Keyboard Shortcuts Dialog Modal -->
+  <div class="shortcuts-modal" id="shortcutsModal" style="display: none;" role="dialog" aria-labelledby="shortcutsTitle" aria-modal="true">
+    <div class="shortcuts-backdrop" id="shortcutsBackdrop"></div>
+    <div class="shortcuts-card">
+      <div class="shortcuts-header">
+        <h3 id="shortcutsTitle">Keyboard Navigation Shortcuts</h3>
+        <button class="shortcuts-close-btn" id="shortcutsCloseBtn" aria-label="Close shortcuts modal">&times;</button>
+      </div>
+      <div class="shortcuts-list">
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Open / Close this shortcuts modal</span>
+          <kbd class="kbd-badge">?</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Toggle Parchment / Vault Dark Theme</span>
+          <kbd class="kbd-badge">T</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Toggle "Explain Like I'm New" mode</span>
+          <kbd class="kbd-badge">E</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Launch Guided Tour for Judges</span>
+          <kbd class="kbd-badge">G</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Copy Quantitative Summary</span>
+          <kbd class="kbd-badge">C</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Jump to sections (Overview, Balance, Heatmap, Curve...)</span>
+          <kbd class="kbd-badge">1 – 8</kbd>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Close any modal or popover</span>
+          <kbd class="kbd-badge">Esc</kbd>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
