@@ -12,8 +12,13 @@ import json
 import logging
 import time
 from datetime import date, timedelta
+import sys
 from pathlib import Path
 from typing import Optional
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 import requests
 import pandas as pd
@@ -324,6 +329,20 @@ def load_local_raw_csvs(data_dir: Path = DATA_RAW) -> tuple[pd.DataFrame, int, i
     for csv_path in sorted(csv_files):
         try:
             raw = pd.read_csv(csv_path)
+
+            # Filter Symbol column for GOLD and keep only futures (FUTCOM)
+            sym_col = next((c for c in raw.columns if "symbol" in c.lower()), None)
+            if sym_col is not None:
+                mask = raw[sym_col].astype(str).str.contains("GOLD", case=False, na=False)
+                inst_col = next((c for c in raw.columns if "instrument" in c.lower()), None)
+                if inst_col is not None:
+                    mask = mask & (raw[inst_col].astype(str).str.strip().str.upper() == "FUTCOM")
+                raw = raw[mask].copy()
+
+            if raw.empty:
+                log.info(f"[LOCAL CSV] {csv_path.name}: no GOLD futures rows found -- skipped.")
+                continue
+
             norm = _normalise_columns(raw)
             if norm is None:
                 log.warning(f"[LOCAL CSV] {csv_path.name}: missing required columns -- rejected.")
@@ -453,4 +472,106 @@ def load_local_raw_csvs(data_dir: Path = DATA_RAW) -> tuple[pd.DataFrame, int, i
         f"Total rows: {len(combined)}, trading days: {combined['Date'].nunique()}"
     )
     return combined, accepted, rejected
+
+
+# -- Batch Filtering Helper -------------------------------------------------
+
+def filter_raw_csv_gold_only(data_dir: Path = DATA_RAW) -> dict:
+    """
+    Scan all CSV files in data_dir, filter each file to retain only rows
+    where the Symbol column contains 'GOLD', and overwrite the file in place.
+    Reduces file size from ~2MB to ~5KB-350KB per file.
+    """
+    csv_files = sorted(list(data_dir.glob("*.csv")))
+    if not csv_files:
+        print(f"No CSV files found in {data_dir}")
+        return {}
+
+    total_files = len(csv_files)
+    processed = 0
+    total_orig_bytes = 0
+    total_new_bytes = 0
+
+    print("=" * 68)
+    print(f" Filtering {total_files} Bhavcopy CSV files in {data_dir} for GOLD only")
+    print("=" * 68)
+
+    for idx, csv_path in enumerate(csv_files, 1):
+        try:
+            orig_size = csv_path.stat().st_size
+            total_orig_bytes += orig_size
+
+            df = pd.read_csv(csv_path)
+            orig_rows = len(df)
+
+            sym_col = next((c for c in df.columns if "symbol" in c.lower()), None)
+            if sym_col is None:
+                print(f" [{idx:3d}/{total_files}] {csv_path.name}: No Symbol column found -- skipped.")
+                total_new_bytes += orig_size
+                continue
+
+            # Filter for Symbol containing GOLD
+            mask = df[sym_col].astype(str).str.contains("GOLD", case=False, na=False)
+
+            # Drop options (OPTFUT) and keep only futures (FUTCOM)
+            inst_col = next((c for c in df.columns if "instrument" in c.lower()), None)
+            if inst_col:
+                mask = mask & (df[inst_col].astype(str).str.strip().str.upper() == "FUTCOM")
+            else:
+                opt_col = next((c for c in df.columns if "option" in c.lower()), None)
+                if opt_col:
+                    mask = mask & df[opt_col].astype(str).str.strip().isin(["-", "", "nan", "None"])
+
+            gold_df = df[mask]
+            new_rows = len(gold_df)
+
+            gold_df.to_csv(csv_path, index=False)
+            new_size = csv_path.stat().st_size
+            total_new_bytes += new_size
+            processed += 1
+
+            saved_pct = (1.0 - (new_size / orig_size)) * 100 if orig_size > 0 else 0
+            print(
+                f" [{idx:3d}/{total_files}] {csv_path.name}: {orig_rows:5d} -> {new_rows:4d} rows "
+                f"({orig_size / 1024:6.1f} KB -> {new_size / 1024:5.1f} KB, -{saved_pct:4.1f}%)"
+            )
+        except Exception as e:
+            print(f" [{idx:3d}/{total_files}] Error filtering {csv_path.name}: {e}")
+
+    orig_mb = total_orig_bytes / (1024 * 1024)
+    new_mb = total_new_bytes / (1024 * 1024)
+    saved_mb = orig_mb - new_mb
+    pct_saved = (saved_mb / orig_mb * 100) if orig_mb > 0 else 0
+
+    print("=" * 68)
+    print(f" Done! Successfully filtered {processed}/{total_files} files.")
+    print(f" Total size before: {orig_mb:7.2f} MB")
+    print(f" Total size after : {new_mb:7.2f} MB")
+    print(f" Disk space saved : {saved_mb:7.2f} MB ({pct_saved:.1f}% reduction)")
+    print("=" * 68)
+
+    return {
+        "total_files": total_files,
+        "processed": processed,
+        "orig_bytes": total_orig_bytes,
+        "new_bytes": total_new_bytes,
+    }
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="AuraSpread Bhavcopy fetcher & processor")
+    parser.add_argument(
+        "--filter-gold-only",
+        action="store_true",
+        help="Filter all CSV files in data/raw to only keep rows where Symbol contains 'GOLD'",
+    )
+    args = parser.parse_args()
+
+    if args.filter_gold_only:
+        filter_raw_csv_gold_only()
+    else:
+        df, acc, rej = load_local_raw_csvs()
+        print(f"Loaded {acc} files, {len(df)} rows across {df['Date'].nunique() if not df.empty else 0} trading days.")
+
 
