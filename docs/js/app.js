@@ -26,6 +26,23 @@ const STATE = {
   },
 };
 
+// ── Chart Skeleton / Loading Overlay Helper ─────────────────────────────
+/**
+ * Hides the ".chart-skeleton" loading overlay inside a chart container.
+ * Called immediately after Plotly finishes drawing so users never see
+ * the "Rendering..." text stuck forever.
+ */
+function hideChartSkeleton(chartId) {
+  const chartEl = document.getElementById(chartId);
+  if (!chartEl) return;
+  const skeleton = chartEl.querySelector('.chart-skeleton');
+  if (skeleton) {
+    skeleton.style.display = 'none';
+  }
+  // Ensure the container itself is visible
+  chartEl.style.minHeight = '';
+}
+
 // Colors matching Assay Office CSS tokens
 function getThemeColors() {
   const isParchment = document.documentElement.getAttribute('data-theme') === 'parchment';
@@ -444,6 +461,19 @@ function renderSingleChart(chartType) {
     return;
   }
 
+  // Map chartType → DOM container ID for the 3-second fallback
+  const chartIdMap = {
+    heatmap: 'heatmapChart',
+    termStructure: 'termStructureChart',
+    decomposition: 'decompositionChart',
+    equityCurves: 'equityCurvesChart',
+  };
+
+  // 3-second fallback: hide overlay regardless of whether Plotly fired
+  const fallbackTimer = setTimeout(() => {
+    hideChartSkeleton(chartIdMap[chartType]);
+  }, 3000);
+
   switch (chartType) {
     case 'heatmap':
       renderHeatmapChart();
@@ -462,6 +492,10 @@ function renderSingleChart(chartType) {
       STATE.chartsRendered.equityCurves = true;
       break;
   }
+
+  // Immediately clear fallback if chart rendered synchronously
+  clearTimeout(fallbackTimer);
+  hideChartSkeleton(chartIdMap[chartType]);
 }
 
 function reRenderActiveCharts() {
@@ -797,6 +831,7 @@ function renderHeatmapChart() {
   };
 
   Plotly.react('heatmapChart', [trace], layout, { responsive: true, displayModeBar: false });
+  hideChartSkeleton('heatmapChart');
 }
 
 // ── 4. Carry & Curve Lab ──────────────────────────────────────────────────
@@ -863,6 +898,7 @@ function renderTermStructureChart() {
   };
 
   Plotly.react('termStructureChart', traces, layout, { responsive: true, displayModeBar: false });
+  hideChartSkeleton('termStructureChart');
 }
 
 function renderDecompositionChart() {
@@ -915,6 +951,7 @@ function renderDecompositionChart() {
   };
 
   Plotly.react('decompositionChart', [traceRoll, traceShift], layout, { responsive: true, displayModeBar: false });
+  hideChartSkeleton('decompositionChart');
 }
 
 // ── 5. Signal Desk (With Illustrated Calm Quiet Day State) ─────────────────
@@ -1112,6 +1149,7 @@ function renderEquityCurveChart() {
   };
 
   Plotly.react('equityCurvesChart', traces, layout, { responsive: true, displayModeBar: false });
+  hideChartSkeleton('equityCurvesChart');
 }
 
 // ── 7. Breakeven Gauge ────────────────────────────────────────────────────
