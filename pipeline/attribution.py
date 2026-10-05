@@ -55,7 +55,13 @@ def attribute_returns(
         return {"beta": 0.0, "alpha": 0.0, "r_squared": 0.0,
                 "gold_neutral_pnl": 0.0, "explained_pnl": 0.0}
 
-    y = strategy_returns[:n]
+    # Convert strategy P&L (₹ absolute) to fractional returns so units match
+    # gold_ret (which is pct_change, e.g. 0.001).  Use median gold price as
+    # the normalising constant so extreme days don't distort the regression.
+    avg_gold_price = float(np.median(gold_prices.values))
+    if avg_gold_price < 1:
+        avg_gold_price = 72000.0
+    y = strategy_returns[:n] / avg_gold_price
     x = gold_ret[:n]
 
     # OLS via numpy
@@ -71,8 +77,10 @@ def attribute_returns(
     ss_tot    = np.sum((y - np.mean(y)) ** 2)
     r_sq      = 1 - ss_res / (ss_tot + 1e-12)
 
-    explained_pnl    = float(np.sum(beta_hat * x))
-    gold_neutral_pnl = float(np.sum(y)) - explained_pnl
+    explained_pnl    = float(np.sum(beta_hat * x)) * avg_gold_price
+    gold_neutral_pnl = float(np.sum(strategy_returns[:n])) - explained_pnl
+
+    beta_hat = max(-2.0, min(2.0, float(beta_hat)))
 
     return {
         "beta":             round(float(beta_hat),      4),
@@ -136,6 +144,10 @@ def build_gold_neutral_equity(
     gold_ret = gold_prices.pct_change().dropna().values
     n = min(len(strategy_returns), len(gold_ret))
 
-    hedged = strategy_returns[:n] - beta * gold_ret[:n]
+    avg_gold_price = float(np.median(gold_prices.values))
+    if avg_gold_price < 1:
+        avg_gold_price = 72000.0
+
+    hedged = strategy_returns[:n] - (beta * avg_gold_price) * gold_ret[:n]
     cumulative = np.concatenate([[0.0], np.cumsum(hedged)])
     return [round(float(v), 4) for v in cumulative]

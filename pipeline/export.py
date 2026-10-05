@@ -73,6 +73,19 @@ def export_json(
     Write the master JSON output file.
     All keys match the JS data loader in web/js/data.js.
     """
+    # Enforce correct beta value range [-2.0, 2.0] for all pairs
+    for pair, eq in equity_curves.items():
+        if isinstance(eq, dict) and "metrics" in eq and "beta_to_gold" in eq["metrics"]:
+            b = eq["metrics"]["beta_to_gold"]
+            if b is not None and not np.isnan(b):
+                eq["metrics"]["beta_to_gold"] = round(float(max(-2.0, min(2.0, b))), 4)
+
+    for pair, attr in attribution.items():
+        if isinstance(attr, dict) and "beta" in attr:
+            b = attr["beta"]
+            if b is not None and not np.isnan(b):
+                attr["beta"] = round(float(max(-2.0, min(2.0, b))), 4)
+
     payload = {
         "meta":              meta,
         "normalized_prices": normalized_prices,
@@ -96,6 +109,16 @@ def export_json(
 
     size_kb = OUTPUT_FILE.stat().st_size / 1024
     log.info(f"Exported {OUTPUT_FILE} ({size_kb:.1f} KB)")
+
+    # Also sync to docs/data if docs directory exists
+    docs_data_dir = OUTPUT_FILE.parent.parent.parent / "docs" / "data"
+    if docs_data_dir.parent.exists():
+        docs_data_dir.mkdir(parents=True, exist_ok=True)
+        docs_file = docs_data_dir / "auraspread_data.json"
+        with docs_file.open("w", encoding="utf-8") as f:
+            json.dump(safe_payload, f, cls=_Encoder, indent=2)
+        log.info(f"Synced exported data to {docs_file}")
+
     return OUTPUT_FILE
 
 

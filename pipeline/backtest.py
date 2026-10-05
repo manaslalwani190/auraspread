@@ -78,6 +78,7 @@ def run_backtest(
     signals_df: pd.DataFrame,
     sym_a: str,
     sym_b: str,
+    gold_prices: Optional[pd.Series] = None,
 ) -> dict:
     """
     Walk-forward backtest for a single pair (sym_a, sym_b).
@@ -207,7 +208,7 @@ def run_backtest(
         trades.append(active_trade)
 
     # ── Metrics ──────────────────────────────────────────────────────────
-    metrics = _compute_metrics(trades, equity_net, test_df)
+    metrics = _compute_metrics(trades, equity_net, test_df, gold_prices)
 
     return {
         "trades":       [_trade_to_dict(t) for t in trades],
@@ -235,16 +236,77 @@ def _trade_to_dict(t: Trade) -> dict:
     }
 
 
+def calculate_beta_to_gold(
+    equity_net: list[float],
+    gold_prices: Optional[pd.Series | np.ndarray] = None,
+) -> float:
+    """
+    Calculate Beta to Gold for the spread strategy:
+    Regression: spread_pnl = alpha + beta * gold_returns
+    Beta = covariance(spread_pnl, gold_returns) / variance(gold_returns)
+
+    - Y: daily P&L of spread strategy normalized to fractional returns (spread_daily_pnl / avg_gold_price)
+    - X: daily MCX gold benchmark percentage returns
+    Returns beta typically between -1 and +1 (bounded [-2.0, +2.0]).
+    """
+    if len(equity_net) < 5 or gold_prices is None or len(gold_prices) < 5:
+        return 0.0
+
+    daily_pnl = np.diff(np.array(equity_net, dtype=float))
+
+    if isinstance(gold_prices, pd.Series):
+        s = gold_prices.dropna()
+        if len(s) < 5:
+            return 0.0
+        gold_ret = s.pct_change().dropna().values
+        avg_gold_price = float(np.median(s.values))
+    else:
+        gold_arr = np.array(gold_prices, dtype=float)
+        gold_arr = gold_arr[~np.isnan(gold_arr)]
+        if len(gold_arr) < 5:
+            return 0.0
+        gold_ret = np.diff(gold_arr) / gold_arr[:-1]
+        avg_gold_price = float(np.median(gold_arr))
+
+    if avg_gold_price <= 0:
+        avg_gold_price = 72000.0
+
+    # Dimensionless daily spread return matching gold_ret units
+    spread_ret = daily_pnl / avg_gold_price
+
+    n = min(len(spread_ret), len(gold_ret))
+    if n < 5:
+        return 0.0
+
+    y = spread_ret[:n]
+    x = gold_ret[:n]
+
+    var_x = float(np.var(x, ddof=1))
+    if var_x < 1e-12:
+        return 0.0
+
+    cov_xy = float(np.cov(y, x, ddof=1)[0, 1])
+    beta = cov_xy / var_x
+
+    if np.isnan(beta) or np.isinf(beta):
+        return 0.0
+
+    # Spread strategy should typically be between -1 and +1, bounded [-2.0, +2.0]
+    beta = max(-2.0, min(2.0, beta))
+    return round(float(beta), 4)
+
+
 def _compute_metrics(
     trades: list[Trade],
     equity_net: list[float],
     test_df: pd.DataFrame,
+    gold_prices: Optional[pd.Series | np.ndarray] = None,
 ) -> dict:
     if not trades:
         return {
             "n_trades": 0, "gross_pnl": 0, "net_pnl": 0,
             "hit_rate": 0, "sharpe": 0, "max_drawdown": 0,
-            "turnover": 0, "beta_to_gold": 0,
+            "turnover": 0, "beta_to_gold": 0.0,
         }
 
     n          = len(trades)
@@ -264,6 +326,11 @@ def _compute_metrics(
         sharpe = 0.0
         max_dd = 0.0
 
+    if gold_prices is None and "NormBase" in test_df.columns:
+        gold_prices = test_df["NormBase"]
+
+    beta_to_gold = calculate_beta_to_gold(equity_net, gold_prices)
+
     return {
         "n_trades":     n,
         "gross_pnl":    round(gross_pnl, 2),
@@ -272,5 +339,5 @@ def _compute_metrics(
         "sharpe":       round(float(sharpe), 4),
         "max_drawdown": round(max_dd, 4),
         "turnover":     n,
-        "beta_to_gold": 0.0,   # filled in by attribution.py
+        "beta_to_gold": beta_to_gold,
     }

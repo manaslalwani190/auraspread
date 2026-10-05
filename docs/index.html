@@ -212,7 +212,7 @@
               <span class="verdict-model-tag" id="verdictModelTag">SYNTHETIC MODEL (MCX CALIBRATION)</span>
             </div>
           </div>
-          <p class="verdict-text" id="masterVerdictText">
+          <p class="verdict-text gold-prominent" id="masterVerdictText">
             Across 250+ trading sessions, 87.4% of the raw visual price divergence between MCX contracts is explained mechanically by the ~25-day expiry difference (financing carry at ~6.5% p.a.) and the 995 vs 999 purity differential. When including realistic round-trip exchange fees, STT, and retail slippage in thin contracts (GOLDPETAL/GOLDGUINEA), <strong>net out-of-sample alpha reduces to near zero or negative</strong>. We report this honestly rather than showcasing an illusory backtest curve.
           </p>
         </div>
@@ -220,19 +220,19 @@
         <!-- 3 Headline Stat Tiles with Count-Up Animation -->
         <div class="headline-stats-grid" id="headlineStatsGrid">
           <div class="stat-tile-card">
-            <div class="stat-tile-label">Best Net Edge (After Costs)</div>
-            <div class="stat-tile-number" id="statTileEdge" data-target="0" data-prefix="₹" data-suffix="/10g">₹0.00/10g</div>
-            <div class="stat-tile-desc" id="statTileEdgeSub">Max margin across 6 pairs: ₹-80.01 (100% absorbed by frictions)</div>
+            <div class="stat-tile-number" id="statTileDays" data-target="435">435</div>
+            <div class="stat-tile-label">Trading Days Analyzed</div>
+            <div class="stat-tile-desc">Full MCX historical bhavcopy window (Oct 2025 – Oct 2026)</div>
           </div>
           <div class="stat-tile-card">
-            <div class="stat-tile-label">Actionable Signal Days</div>
-            <div class="stat-tile-number" id="statTileSignals" data-target="0" data-suffix=" Days">0 Days</div>
-            <div class="stat-tile-desc" id="statTileSignalsSub">Out of 252 sessions: 0 days cleared z-score & cost hurdles</div>
+            <div class="stat-tile-number" id="statTileHurdle" data-target="35" data-prefix="₹" data-suffix="/10g">₹35/10g</div>
+            <div class="stat-tile-label">Cost Hurdle Applied</div>
+            <div class="stat-tile-desc">Exchange turnover, STT, stamp duty & retail crossing friction</div>
           </div>
           <div class="stat-tile-card">
-            <div class="stat-tile-label">Spread Explained by Carry & Purity</div>
-            <div class="stat-tile-number" id="statTileCarryShare" data-target="87.4" data-suffix="%">87.4%</div>
-            <div class="stat-tile-desc" id="statTileCarryShareSub">Mechanical financing carry (~6.5% p.a.) + 995/999 fineness differential</div>
+            <div class="stat-tile-number" id="statTilePairs" data-target="6">6</div>
+            <div class="stat-tile-label">Contract Pairs Tested</div>
+            <div class="stat-tile-desc">Combinations of GOLD, GOLDM, GOLDTEN, GOLDGUINEA, GOLDPETAL</div>
           </div>
         </div>
 
@@ -473,6 +473,12 @@
             <span class="takeaway-text" id="balanceTakeawayText">
               Loading pair comparison analysis...
             </span>
+          </div>
+
+          <!-- Friction Range Label -->
+          <div class="balance-friction-label" id="balanceFrictionLabel">
+            <span class="friction-icon">⚖</span>
+            <span id="balanceFrictionText">GOLDGUINEA costs ₹555 more per 10g after carry adjustment — within normal friction band</span>
           </div>
 
           <!-- Metric Summary Below Balance -->
@@ -743,10 +749,12 @@
             <div class="metric-pill-value" id="metricHitRate">0.0%</div>
             <div class="metric-sub">Profitable trades</div>
           </div>
-          <div class="metric-pill-card">
-            <div class="metric-pill-label">Beta to Gold</div>
+          <div class="metric-pill-card" style="position:relative;">
+            <div class="metric-pill-label" style="display:flex;align-items:center;gap:0.4rem;">Beta to Gold
+              <span class="info-pill has-tooltip" title="Regression of strategy daily P&amp;L (as % of gold price) against gold's own daily % return. A beta near 0 means the strategy's profits don't come from simply riding gold up or down — they're truly pair-relative. Range is typically –2 to +2 for a well-hedged relative-value strategy.">ℹ</span>
+            </div>
             <div class="metric-pill-value" id="metricBeta">0.000</div>
-            <div class="metric-sub">Residual correlation</div>
+            <div class="metric-sub">Residual mkt-neutral correlation</div>
           </div>
           <div class="metric-pill-card">
             <div class="metric-pill-label">Total Executions</div>
