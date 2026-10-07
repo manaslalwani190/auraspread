@@ -1094,6 +1094,16 @@ body.show-explain .explain-tag {
   flex-wrap: wrap;
 }
 
+.granularity-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: var(--bg-card);
+  padding: 0.2rem;
+  border-radius: var(--radius-chamfer);
+  border: 1px solid var(--border-bronze-light);
+}
+
 .chart-hint-text {
   font-size: 0.85rem;
   color: var(--text-muted);

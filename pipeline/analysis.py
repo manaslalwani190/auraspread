@@ -117,11 +117,11 @@ def carry_adjusted_price(
         d["Exp_dt"]  = pd.to_datetime(d["ExpiryDate"])
         d["DaysToExp"] = (d["Exp_dt"] - d["Date_dt"]).dt.days
 
-    # Filter out contracts expiring within EXPIRY_BLACKOUT_DAYS (e.g. 0-1 days remaining)
-    base_clean = base_df[base_df["DaysToExp"] >= EXPIRY_BLACKOUT_DAYS]
+    # Keep all active trading day contracts (DaysToExp >= 0)
+    base_clean = base_df[base_df["DaysToExp"] >= 0]
     if base_clean.empty:
         base_clean = base_df
-    target_clean = target_df[target_df["DaysToExp"] >= EXPIRY_BLACKOUT_DAYS]
+    target_clean = target_df[target_df["DaysToExp"] >= 0]
     if target_clean.empty:
         target_clean = target_df
 

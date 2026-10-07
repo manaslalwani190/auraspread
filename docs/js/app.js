@@ -18,6 +18,7 @@ const STATE = {
   isParchment: false,
   explainMode: false,
   tourCurrentStep: 0,
+  heatmapGranularity: 'weekly',
   chartsRendered: {
     heatmap: false,
     termStructure: false,
@@ -314,6 +315,26 @@ function setupEventListeners() {
   if (csvCurve) csvCurve.addEventListener('click', exportCurveCSV);
   if (csvDecomp) csvDecomp.addEventListener('click', exportDecompCSV);
   if (csvEquity) csvEquity.addEventListener('click', exportEquityCSV);
+
+  // Heatmap Granularity Toggle
+  const btnWeekly = document.getElementById('btnHeatmapWeekly');
+  const btnDaily = document.getElementById('btnHeatmapDaily');
+  if (btnWeekly && btnDaily) {
+    btnWeekly.addEventListener('click', () => {
+      if (STATE.heatmapGranularity === 'weekly') return;
+      STATE.heatmapGranularity = 'weekly';
+      btnWeekly.classList.add('active');
+      btnDaily.classList.remove('active');
+      renderHeatmapChart();
+    });
+    btnDaily.addEventListener('click', () => {
+      if (STATE.heatmapGranularity === 'daily') return;
+      STATE.heatmapGranularity = 'daily';
+      btnDaily.classList.add('active');
+      btnWeekly.classList.remove('active');
+      renderHeatmapChart();
+    });
+  }
 
   // Copy Summary Buttons
   const copyButtons = [
@@ -769,29 +790,135 @@ function renderHeatmapChart() {
   if (!chartEl || !STATE.data || !STATE.data.residuals) return;
 
   const { residuals } = STATE.data;
-  const pairs = Object.keys(residuals);
+  // Standard logical ordering of contract pairs (wholesale to retail)
+  const canonicalPairs = [
+    'GOLDM-GOLDTEN',
+    'GOLDM-GOLDGUINEA',
+    'GOLDM-GOLDPETAL',
+    'GOLDTEN-GOLDGUINEA',
+    'GOLDTEN-GOLDPETAL',
+    'GOLDGUINEA-GOLDPETAL',
+  ];
+  const availablePairs = Object.keys(residuals);
+  const pairs = canonicalPairs.filter(p => availablePairs.includes(p)).concat(
+    availablePairs.filter(p => !canonicalPairs.includes(p))
+  );
   if (!pairs.length) return;
 
-  // Build unified sorted date series across all pairs to ensure equal row lengths
-  const allDates = (STATE.data.heatmap && STATE.data.heatmap.dates)
-    ? STATE.data.heatmap.dates
-    : Array.from(new Set(pairs.flatMap(p => (residuals[p] || []).map(d => d.date)))).sort();
+  // Build unified sorted date series from the dataset
+  const rawDatesSet = new Set();
+  pairs.forEach(p => {
+    (residuals[p] || []).forEach(d => {
+      if (d && d.date) rawDatesSet.add(d.date);
+    });
+  });
+  const rawDates = Array.from(rawDatesSet).sort();
+  if (!rawDates.length) return;
 
-  const zMatrix = (STATE.data.heatmap && STATE.data.heatmap.matrix)
-    ? STATE.data.heatmap.matrix
-    : pairs.map(pair => {
-        const dateMap = new Map();
-        (residuals[pair] || []).forEach(item => {
-          dateMap.set(item.date, item.residual !== null ? item.residual : 0);
-        });
-        return allDates.map(d => dateMap.has(d) ? dateMap.get(d) : null);
+  const isWeekly = STATE.heatmapGranularity !== 'daily';
+
+  let xSeries = [];
+  let zMatrix = [];
+  let hoverTextMatrix = [];
+
+  if (isWeekly) {
+    // ── Time Bucketing: Weekly Median Regime Bins ──
+    // Eliminates dense hairline barcodes by grouping into clean rectangular weekly bins
+    const dateToWeekMap = new Map();
+    const weekSet = new Set();
+    rawDates.forEach(dStr => {
+      const dObj = new Date(dStr + 'T00:00:00Z');
+      const dayOfWeek = dObj.getUTCDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
+      const diffToFriday = (5 - dayOfWeek + 7) % 7;
+      const friObj = new Date(dObj.getTime() + diffToFriday * 86400000);
+      const friStr = friObj.toISOString().slice(0, 10);
+      dateToWeekMap.set(dStr, friStr);
+      weekSet.add(friStr);
+    });
+    xSeries = Array.from(weekSet).sort();
+
+    pairs.forEach(pair => {
+      const weekBucket = new Map();
+      (residuals[pair] || []).forEach(item => {
+        if (!item || item.residual === null || item.residual === undefined) return;
+        const w = dateToWeekMap.get(item.date);
+        if (!w) return;
+        if (!weekBucket.has(w)) weekBucket.set(w, []);
+        weekBucket.get(w).push(item.residual);
       });
+
+      const rowZ = [];
+      const rowHover = [];
+      xSeries.forEach(wDate => {
+        const vals = weekBucket.get(wDate);
+        if (vals && vals.length > 0) {
+          vals.sort((a, b) => a - b);
+          const mid = Math.floor(vals.length / 2);
+          const medVal = vals.length % 2 !== 0 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+          const rounded = Math.round(medVal * 100) / 100;
+          rowZ.push(rounded);
+          const regDesc = rounded > 50
+            ? 'Target Leg Rich (Positive Residual)'
+            : (rounded < -50 ? 'Target Leg Cheap (Negative Residual)' : 'Carry Equilibrium (Neutral)');
+          rowHover.push(
+            `<b>${pair}</b><br>` +
+            `Week Ending: ${wDate}<br>` +
+            `Weekly Median Residual: <b>${rounded > 0 ? '+' : ''}${rounded.toFixed(2)} ₹/10g</b><br>` +
+            `Regime: ${regDesc}`
+          );
+        } else {
+          rowZ.push(null);
+          rowHover.push(`<b>${pair}</b><br>Week Ending: ${wDate}<br>No Trading / Unlisted`);
+        }
+      });
+      zMatrix.push(rowZ);
+      hoverTextMatrix.push(rowHover);
+    });
+  } else {
+    // ── Daily Trading Sessions ──
+    xSeries = rawDates;
+    pairs.forEach(pair => {
+      const dateMap = new Map();
+      (residuals[pair] || []).forEach(item => {
+        if (item && item.date) {
+          dateMap.set(item.date, item.residual !== null && item.residual !== undefined ? item.residual : null);
+        }
+      });
+      const rowZ = [];
+      const rowHover = [];
+      xSeries.forEach(dStr => {
+        const val = dateMap.get(dStr);
+        if (val !== undefined && val !== null) {
+          const rounded = Math.round(val * 100) / 100;
+          rowZ.push(rounded);
+          const regDesc = rounded > 50
+            ? 'Target Leg Rich (Positive Residual)'
+            : (rounded < -50 ? 'Target Leg Cheap (Negative Residual)' : 'Carry Equilibrium (Neutral)');
+          rowHover.push(
+            `<b>${pair}</b><br>` +
+            `Date: ${dStr}<br>` +
+            `Carry-Adjusted Residual: <b>${rounded > 0 ? '+' : ''}${rounded.toFixed(2)} ₹/10g</b><br>` +
+            `Regime: ${regDesc}`
+          );
+        } else {
+          rowZ.push(null);
+          rowHover.push(`<b>${pair}</b><br>Date: ${dStr}<br>No Trading / Unlisted`);
+        }
+      });
+      zMatrix.push(rowZ);
+      hoverTextMatrix.push(rowHover);
+    });
+  }
 
   const c = getThemeColors();
 
+  // Dynamic date range spanning the actual data (not hardcoded)
+  const dateStart = xSeries[0];
+  const dateEnd = xSeries[xSeries.length - 1];
+
   const trace = {
     z: zMatrix,
-    x: allDates,
+    x: xSeries,
     y: pairs,
     type: 'heatmap',
     zmin: -500,
@@ -800,33 +927,41 @@ function renderHeatmapChart() {
     colorscale: [
       [0.0, c.copperNeg],
       [0.45, '#2A2016'],
-      [0.5, '#1C1A14'],
+      [0.5, '#161510'],
       [0.55, '#152420'],
-      [1.0, c.verdigrisPos]
+      [1.0, c.verdigrisPos],
     ],
     colorbar: {
       title: 'Residual (₹/10g)',
       titleside: 'top',
       tickfont: { color: c.textMuted, family: 'JetBrains Mono', size: 10 },
       titlefont: { color: c.textMain, family: 'Inter', size: 12 },
+      thickness: 16,
+      len: 0.9,
     },
     hoverongaps: false,
-    hovertemplate: '<b>%{y}</b><br>Date: %{x}<br>Carry-Adjusted Residual: ₹%{z:.2f}<extra></extra>',
+    text: hoverTextMatrix,
+    hoverinfo: 'text',
   };
 
   const layout = {
     paper_bgcolor: 'transparent',
     plot_bgcolor: c.bgPlot,
     font: { color: c.textMain, family: 'Inter' },
-    margin: { t: 20, r: 40, b: 60, l: 155 },
+    margin: { t: 25, r: 40, b: 65, l: 165 },
     xaxis: {
       type: 'date',
-      range: ['2025-10-04', '2026-10-04'],
+      range: [dateStart, dateEnd],
+      tickformat: '%b %Y',
+      dtick: 'M2', // Every 2 months: Nov 2025, Jan 2026, Mar 2026, May 2026, Jul 2026, Sep 2026
       gridcolor: c.borderBronze,
       tickfont: { family: 'JetBrains Mono', size: 11, color: c.textMuted },
     },
     yaxis: {
       tickfont: { family: 'JetBrains Mono', size: 12, color: c.accentGold },
+      automargin: true,
+      categoryorder: 'array',
+      categoryarray: pairs.slice().reverse(), // Top-to-bottom matches array order
     },
   };
 

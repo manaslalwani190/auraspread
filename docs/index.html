@@ -517,9 +517,16 @@
           </div>
         </div>
 
-        <div class="chart-card" role="region" aria-label="Carry-Adjusted Residual Heatmap Chart">
           <div class="chart-header-row">
             <div class="chart-controls">
+              <div class="granularity-toggle-group" id="heatmapGranularityToggle" role="group" aria-label="Heatmap Resolution">
+                <button type="button" class="btn-assay btn-sm active" id="btnHeatmapWeekly" data-granularity="weekly" title="Weekly Regime Bins (Smoothed Mispricing Blocks)">
+                  Weekly Regime
+                </button>
+                <button type="button" class="btn-assay btn-sm" id="btnHeatmapDaily" data-granularity="daily" title="Daily Sessions (Raw Microstructure Trading Days)">
+                  Daily Sessions
+                </button>
+              </div>
               <span class="chart-hint-text">Brush Range to Zoom &bull; Hover for daily residual details</span>
             </div>
             <div class="chart-btn-group">
