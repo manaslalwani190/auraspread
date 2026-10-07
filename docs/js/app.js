@@ -773,21 +773,19 @@ function renderHeatmapChart() {
   if (!pairs.length) return;
 
   // Build unified sorted date series across all pairs to ensure equal row lengths
-  const allDatesSet = new Set();
-  pairs.forEach(pair => {
-    (residuals[pair] || []).forEach(d => allDatesSet.add(d.date));
-  });
-  const allDates = Array.from(allDatesSet).sort();
+  const allDates = (STATE.data.heatmap && STATE.data.heatmap.dates)
+    ? STATE.data.heatmap.dates
+    : Array.from(new Set(pairs.flatMap(p => (residuals[p] || []).map(d => d.date)))).sort();
 
-  const zMatrix = [];
-  pairs.forEach(pair => {
-    const dateMap = new Map();
-    (residuals[pair] || []).forEach(item => {
-      dateMap.set(item.date, item.residual !== null ? item.residual : 0);
-    });
-    const row = allDates.map(d => dateMap.has(d) ? dateMap.get(d) : null);
-    zMatrix.push(row);
-  });
+  const zMatrix = (STATE.data.heatmap && STATE.data.heatmap.matrix)
+    ? STATE.data.heatmap.matrix
+    : pairs.map(pair => {
+        const dateMap = new Map();
+        (residuals[pair] || []).forEach(item => {
+          dateMap.set(item.date, item.residual !== null ? item.residual : 0);
+        });
+        return allDates.map(d => dateMap.has(d) ? dateMap.get(d) : null);
+      });
 
   const c = getThemeColors();
 
@@ -1563,15 +1561,22 @@ function downloadCSV(filename, csvContent) {
 
 function exportHeatmapCSV() {
   if (!STATE.data || !STATE.data.residuals) return;
-  const { residuals } = STATE.data;
-  const pairs = Object.keys(residuals);
-  const dates = residuals[pairs[0]].map(d => d.date);
+  const { residuals, heatmap } = STATE.data;
+  const pairs = (heatmap && heatmap.pairs) ? heatmap.pairs : Object.keys(residuals);
+  const dates = (heatmap && heatmap.dates)
+    ? heatmap.dates
+    : Array.from(new Set(pairs.flatMap(p => (residuals[p] || []).map(d => d.date)))).sort();
 
   let csv = 'Date,' + pairs.join(',') + '\n';
-  dates.forEach((d, i) => {
+  const pairMaps = {};
+  pairs.forEach(p => {
+    pairMaps[p] = new Map((residuals[p] || []).map(item => [item.date, item.residual]));
+  });
+  dates.forEach(d => {
     const row = [d];
     pairs.forEach(p => {
-      row.push(residuals[p][i].residual !== null ? residuals[p][i].residual.toFixed(2) : '');
+      const val = pairMaps[p].get(d);
+      row.push(val !== undefined && val !== null ? val.toFixed(2) : '');
     });
     csv += row.join(',') + '\n';
   });

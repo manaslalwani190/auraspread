@@ -103,7 +103,8 @@ def run() -> None:
 
     # ── Step 2: Normalization to INR per 10g (999 Purity) ───────────────────
     log.info("Normalizing contract prices to INR per 10g of 999 gold...")
-    norm_panel = build_normalized_panel(raw_df)
+    norm_panel_full = build_normalized_panel(raw_df, deduplicate=False)
+    norm_panel = build_normalized_panel(raw_df, deduplicate=True)
 
     # Prepare normalized_prices for export
     # Sample daily representative near-month prices
@@ -143,7 +144,7 @@ def run() -> None:
         pair_key = f"{sym_a}-{sym_b}"
         log.info(f"Processing pair: {pair_key}")
 
-        carry_series = estimate_carry_per_day(norm_panel, sym_a)
+        carry_series = estimate_carry_per_day(norm_panel_full, sym_a)
         res_df = carry_adjusted_price(norm_panel, sym_a, sym_b, market_carry=carry_series)
 
         if res_df.empty:
@@ -233,7 +234,7 @@ def run() -> None:
 
     # ── Step 5: Term Structure Curve & Price Decomposition ─────────────────
     log.info("Calculating term structure and mechanical roll-down decomposition...")
-    curve_df = compute_term_structure(norm_panel)
+    curve_df = compute_term_structure(norm_panel_full)
     curve_export = [
         {
             "date": str(r["Date"]),
@@ -246,7 +247,7 @@ def run() -> None:
         for _, r in curve_df.iterrows()
     ]
 
-    decomp_df = decompose_price_change(norm_panel)
+    decomp_df = decompose_price_change(norm_panel_full)
     decomp_export = [
         {
             "date": str(r["Date"]),

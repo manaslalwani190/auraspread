@@ -86,6 +86,21 @@ def export_json(
             if b is not None and not np.isnan(b):
                 attr["beta"] = round(float(max(-2.0, min(2.0, b))), 4)
 
+    # Build unified sorted date series and matrix for heatmap
+    heatmap_dates = sorted(list({d["date"] for items in residuals.values() for d in items}))
+    heatmap_matrix = []
+    pairs_list = list(residuals.keys())
+    for pair in pairs_list:
+        date_map = {item["date"]: item["residual"] for item in residuals.get(pair, [])}
+        row = [date_map.get(d) for d in heatmap_dates]
+        heatmap_matrix.append(row)
+
+    heatmap_payload = {
+        "dates": heatmap_dates,
+        "pairs": pairs_list,
+        "matrix": heatmap_matrix,
+    }
+
     payload = {
         "meta":              meta,
         "normalized_prices": normalized_prices,
@@ -99,6 +114,7 @@ def export_json(
         "attribution":       attribution,
         "breakeven":         breakeven,
         "calendar":          calendar,
+        "heatmap":           heatmap_payload,
     }
 
     safe_payload = _safe(payload)

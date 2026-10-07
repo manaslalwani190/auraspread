@@ -85,16 +85,62 @@ def normalize_series(
     )
 
 
+def deduplicate_nearest_contract(
+    df: pd.DataFrame,
+    date_col: str = "Date",
+    symbol_col: str = "Symbol",
+    expiry_col: str = "ExpiryDate",
+    volume_col: str = "Volume",
+) -> pd.DataFrame:
+    """
+    When multiple contract expiries exist for the same symbol on the same date,
+    keep only the NEAREST expiry contract (highest volume or earliest expiry date).
+    Picks ONE active contract per symbol per date.
+    Never creates two rows for the same symbol+date.
+    """
+    if df.empty or expiry_col not in df.columns or date_col not in df.columns:
+        return df
+
+    clean = df.copy()
+    exp_dt = pd.to_datetime(clean[expiry_col])
+    date_dt = pd.to_datetime(clean[date_col])
+
+    # Keep only active contracts (expiry on or after trade date)
+    active = clean[exp_dt >= date_dt]
+    if active.empty:
+        active = clean
+
+    # Consistent rolling logic:
+    # Sort by trade date, symbol, expiry date (earliest active first), and volume (highest first)
+    sort_cols = [date_col, symbol_col, expiry_col]
+    ascending = [True, True, True]
+    if volume_col in active.columns:
+        sort_cols.append(volume_col)
+        ascending.append(False)
+
+    deduped = (
+        active.sort_values(sort_cols, ascending=ascending)
+        .groupby([date_col, symbol_col], as_index=False)
+        .first()
+    )
+    return deduped
+
+
 def build_normalized_panel(
     raw_df: pd.DataFrame,
     price_col: str = "Close",
+    deduplicate: bool = True,
 ) -> pd.DataFrame:
     """
     Given a long-format DataFrame with columns
     [Date, Symbol, ExpiryDate, Open, High, Low, Close, Volume, OpenInterest],
     add a 'NormClose' column and return the enriched frame.
+
+    When deduplicate=True, keeps only the NEAREST expiry contract per symbol per date.
     """
     df = raw_df.copy()
+    if deduplicate:
+        df = deduplicate_nearest_contract(df)
     df["NormClose"] = normalize_series(df, price_col=price_col)
     return df
 

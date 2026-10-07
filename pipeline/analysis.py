@@ -116,42 +116,37 @@ def carry_adjusted_price(
         d["Date_dt"] = pd.to_datetime(d["Date"])
         d["Exp_dt"]  = pd.to_datetime(d["ExpiryDate"])
         d["DaysToExp"] = (d["Exp_dt"] - d["Date_dt"]).dt.days
-        d["Cycle"] = d["Exp_dt"].dt.to_period("M")
 
     # Filter out contracts expiring within EXPIRY_BLACKOUT_DAYS (e.g. 0-1 days remaining)
     base_clean = base_df[base_df["DaysToExp"] >= EXPIRY_BLACKOUT_DAYS]
+    if base_clean.empty:
+        base_clean = base_df
     target_clean = target_df[target_df["DaysToExp"] >= EXPIRY_BLACKOUT_DAYS]
+    if target_clean.empty:
+        target_clean = target_df
 
-    # Match contracts on the same delivery cycle month
-    base_near = base_clean.sort_values("ExpiryDate").groupby(["Date", "Cycle"], as_index=False).first()
-    target_near = target_clean.sort_values("ExpiryDate").groupby(["Date", "Cycle"], as_index=False).first()
+    # Consistent rolling logic: keep NEAREST active expiry contract per date
+    sort_cols_b = ["Date", "ExpiryDate"] + (["Volume"] if "Volume" in base_clean.columns else [])
+    asc_b = [True, True] + ([False] if "Volume" in base_clean.columns else [])
+    b_n = base_clean.sort_values(sort_cols_b, ascending=asc_b).groupby("Date", as_index=False).first()
+
+    sort_cols_t = ["Date", "ExpiryDate"] + (["Volume"] if "Volume" in target_clean.columns else [])
+    asc_t = [True, True] + ([False] if "Volume" in target_clean.columns else [])
+    t_n = target_clean.sort_values(sort_cols_t, ascending=asc_t).groupby("Date", as_index=False).first()
 
     merged = pd.merge(
-        base_near[["Date", "Cycle", "NormClose", "ExpiryDate"]].rename(
+        b_n[["Date", "NormClose", "ExpiryDate"]].rename(
             columns={"NormClose": "NormBase", "ExpiryDate": "BaseExpiry"}
         ),
-        target_near[["Date", "Cycle", "NormClose", "ExpiryDate"]].rename(
+        t_n[["Date", "NormClose", "ExpiryDate"]].rename(
             columns={"NormClose": "NormTarget", "ExpiryDate": "TargetExpiry"}
         ),
-        on=["Date", "Cycle"],
+        on="Date",
         how="inner",
-    )
-
-    # Fallback to nearest active contract if cycle matching produced empty set
-    if merged.empty:
-        b_n = base_clean.sort_values("ExpiryDate").groupby("Date", as_index=False).first()
-        t_n = target_clean.sort_values("ExpiryDate").groupby("Date", as_index=False).first()
-        merged = pd.merge(
-            b_n[["Date", "NormClose", "ExpiryDate"]].rename(columns={"NormClose": "NormBase", "ExpiryDate": "BaseExpiry"}),
-            t_n[["Date", "NormClose", "ExpiryDate"]].rename(columns={"NormClose": "NormTarget", "ExpiryDate": "TargetExpiry"}),
-            on="Date", how="inner",
-        )
+    ).sort_values("Date").reset_index(drop=True)
 
     if merged.empty:
         return pd.DataFrame()
-
-    # For each date, pick the earliest active contract cycle
-    merged = merged.sort_values("BaseExpiry").groupby("Date", as_index=False).first()
 
     merged["ExpiryGapDays"] = (
         pd.to_datetime(merged["TargetExpiry"]) - pd.to_datetime(merged["BaseExpiry"])
@@ -172,11 +167,11 @@ def carry_adjusted_price(
         merged["ImpliedCarry"] = m_carry.fillna(merged["ImpliedCarry"])
 
     # If same expiry (e.g. GOLDTEN-GOLDPETAL), expiry gap is 0
-    merged.loc[merged["ExpiryGapDays"] <= 0, "ImpliedCarry"] = 0.0
+    merged.loc[merged["ExpiryGapDays"] == 0, "ImpliedCarry"] = 0.0
 
     merged["CarryAdjBase"] = (
         merged["NormBase"]
-        + merged["ImpliedCarry"] * merged["ExpiryGapDays"].clip(lower=0)
+        + merged["ImpliedCarry"] * merged["ExpiryGapDays"]
     )
     raw_residual = merged["NormTarget"] - merged["CarryAdjBase"]
 
