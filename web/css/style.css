@@ -183,18 +183,21 @@ p, li, span, td, div {
 
 /* Side Rail Navigation (Desktop) */
 .side-rail {
+  flex: 0 0 270px;
   width: 270px;
   min-width: 270px;
+  max-width: 270px;
   height: 100vh;
   position: sticky;
   top: 0;
-  background: var(--bg-secondary);
-  border-right: 1px solid var(--border);
+  background-color: #1E1A0E !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
   display: flex;
   flex-direction: column;
   padding: 1.75rem 1.25rem;
-  z-index: 100;
+  z-index: 100 !important;
   overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .brand-stamp {
@@ -375,9 +378,21 @@ input:checked + .slider:before {
 
 /* Main Content Area */
 .main-content {
-  flex-grow: 1;
-  padding: 2rem 3.5rem 5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: calc(100% - 270px);
   max-width: calc(100% - 270px);
+  padding: 2rem 2.5rem 5rem;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+
+.section-wrap {
+  width: 100%;
+  box-sizing: border-box;
+  position: relative;
+  scroll-margin-top: 85px;
 }
 
 /* Sticky Top Status Header */
@@ -385,6 +400,7 @@ input:checked + .slider:before {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
   background: var(--bg-primary);
   border: 1px solid var(--border);
   padding: 0.65rem 1.25rem;
@@ -408,7 +424,7 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   gap: 8px; /* 8px spacing between each element */
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .status-right .btn-assay.btn-sm {
@@ -1427,6 +1443,7 @@ body.show-explain .explain-tag {
   margin-bottom: 3rem;
   box-shadow: var(--shadow-vault);
   position: relative;
+  overflow-x: auto;
 }
 
 .chart-header-row {
@@ -2355,7 +2372,8 @@ body.show-explain .explain-tag {
   }
 
   .main-content {
-    max-width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
     padding: 1.25rem 1.25rem 5rem;
   }
 
@@ -2461,7 +2479,7 @@ body.show-explain .explain-tag {
   }
 
   .mobile-drawer {
-    display: flex;
+    display: none;
     flex-direction: column;
     position: fixed;
     top: 0; right: 0; bottom: 0;
@@ -2471,13 +2489,17 @@ body.show-explain .explain-tag {
     border-left: 1px solid var(--border-bronze);
     z-index: 501;
     padding: 1.5rem;
-    transform: translateX(100%);
-    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     overflow-y: auto;
   }
 
   .mobile-drawer.active {
-    transform: translateX(0);
+    display: flex;
+    animation: drawerSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes drawerSlideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
   }
 
   .drawer-header {
