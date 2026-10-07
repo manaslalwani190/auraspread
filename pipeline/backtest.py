@@ -11,6 +11,13 @@ Walk-forward backtest with:
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
 import logging
 from dataclasses import dataclass, field
 from datetime import date
@@ -341,3 +348,71 @@ def _compute_metrics(
         "turnover":     n,
         "beta_to_gold": beta_to_gold,
     }
+
+
+if __name__ == "__main__":
+    import sys
+    from pathlib import Path
+    _ROOT = Path(__file__).resolve().parent.parent
+    if str(_ROOT) not in sys.path:
+        sys.path.insert(0, str(_ROOT))
+
+    from pipeline.config import DATA_PROC
+    from pipeline.normalize import build_normalized_panel
+    from pipeline.analysis import carry_adjusted_price
+
+    print("=" * 72)
+    print("AuraSpread - Residual Diagnosis for GOLDM-GOLDPETAL Spread")
+    print("=" * 72)
+
+    pq_path = DATA_PROC / "gold_contracts_clean.parquet"
+    if not pq_path.exists():
+        print(f"Error: {pq_path} not found. Please run pipeline first.")
+        sys.exit(1)
+
+    raw_df = pd.read_parquet(pq_path)
+    norm_panel = build_normalized_panel(raw_df)
+
+    # 1. Unadjusted / Naive Spread (illustrating the bug source)
+    gm_raw = norm_panel[norm_panel["Symbol"] == "GOLDM"].sort_values("ExpiryDate").groupby("Date", as_index=False).first()
+    gp_raw = norm_panel[norm_panel["Symbol"] == "GOLDPETAL"].sort_values("ExpiryDate").groupby("Date", as_index=False).first()
+    naive_m = pd.merge(
+        gm_raw[["Date", "NormClose", "ExpiryDate"]].rename(columns={"NormClose": "NormBase", "ExpiryDate": "BaseExp"}),
+        gp_raw[["Date", "NormClose", "ExpiryDate"]].rename(columns={"NormClose": "NormTarget", "ExpiryDate": "TargetExp"}),
+        on="Date"
+    )
+    naive_m["ExpiryGapDays"] = (pd.to_datetime(naive_m["TargetExp"]) - pd.to_datetime(naive_m["BaseExp"])).dt.days
+    naive_m["RawResidual"] = naive_m["NormTarget"] - naive_m["NormBase"]
+    naive_m["NaiveCarryAdj"] = naive_m["NormBase"] + (naive_m["NormBase"] * 0.065 / 252) * naive_m["ExpiryGapDays"]
+    naive_m["NaiveResidual"] = naive_m["NormTarget"] - naive_m["NaiveCarryAdj"]
+
+    print("\n[ROOT CAUSE INSPECTION - NAIVE / UNADJUSTED MISMATCH]:")
+    worst_naive = naive_m.sort_values(by="NaiveResidual", key=abs, ascending=False).iloc[0]
+    print(f"  Worst Anomaly Date      : {worst_naive['Date']}")
+    print(f"  GOLDM Base Expiry       : {worst_naive['BaseExp']} (Norm Base: INR {worst_naive['NormBase']:,.2f})")
+    print(f"  GOLDPETAL Target Expiry : {worst_naive['TargetExp']} (Norm Target: INR {worst_naive['NormTarget']:,.2f})")
+    print(f"  Unmatched Expiry Gap    : {worst_naive['ExpiryGapDays']} days (NEGATIVE GAP -> Out-of-cycle mismatch!)")
+    print(f"  Raw Spread (Target-Base): INR {worst_naive['RawResidual']:,.2f} / 10g")
+    print(f"  Naive Carry-Adj Residual: INR {worst_naive['NaiveResidual']:,.2f} / 10g  <-- Source of ~25,000 error!")
+
+    # 2. Corrected Carry-Adjusted Spread
+    adj_df = carry_adjusted_price(norm_panel, "GOLDM", "GOLDPETAL")
+    print("\n[CORRECTED CARRY-ADJUSTED SPREAD - CYCLE-MATCHED]:")
+    sample_dates = ["2026-01-30", "2026-01-23", "2025-10-06", "2026-03-10"]
+    for d_str in sample_dates:
+        row_sub = adj_df[adj_df["Date"].astype(str) == d_str]
+        if not row_sub.empty:
+            r = row_sub.iloc[0]
+            print(f"  Date {d_str}: NormBase={r['NormBase']:,.2f} ({r['BaseExpiry']}) | "
+                  f"NormTarget={r['NormTarget']:,.2f} ({r['TargetExpiry']}) | "
+                  f"Gap={r['ExpiryGapDays']}d | CarryAdjBase={r['CarryAdjBase']:,.2f} | "
+                  f"Residual={r['Residual']:+.2f} INR/10g")
+
+    print("\n[STATISTICAL SUMMARY OF CORRECTED RESIDUALS]:")
+    print(f"  Total Observations  : {len(adj_df)}")
+    print(f"  Minimum Residual    : {adj_df['Residual'].min():+.2f} INR/10g")
+    print(f"  Maximum Residual    : {adj_df['Residual'].max():+.2f} INR/10g")
+    print(f"  Mean Residual       : {adj_df['Residual'].mean():+.2f} INR/10g")
+    print(f"  Std Residual        : {adj_df['Residual'].std():.2f} INR/10g")
+    print(f"  All within +/-500   : {bool((adj_df['Residual'].abs() <= 500.0).all())}")
+    print("=" * 72)

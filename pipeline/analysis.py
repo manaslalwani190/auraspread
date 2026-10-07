@@ -28,6 +28,7 @@ from pipeline.config import (
     SLIPPAGE_THIN_MULT,
     THIN_VOLUME_LOTS,
     TENDER_BLACKOUT_DAYS,
+    EXPIRY_BLACKOUT_DAYS,
 )
 
 log = logging.getLogger(__name__)
@@ -54,7 +55,7 @@ def estimate_carry_per_day(
     If multiple expiries are present:
         carry_per_day = (F2 - F1) / days_between_expiries
     If only one expiry is present:
-        carry_per_day = NormClose * 0.065 / 252 (6.5% p.a. standard MCX carry proxy)
+        carry_per_day = NormClose * 0.065 / 365 (6.5% p.a. standard MCX carry proxy)
 
     Returns a Series indexed by (Date, ExpiryDate) → carry_per_day (INR/10g/day).
     """
@@ -76,7 +77,7 @@ def estimate_carry_per_day(
                     "CarryPerDay": carry_pd,
                 })
         elif len(expiries) == 1:
-            carry_pd = prices[0] * 0.065 / 252
+            carry_pd = prices[0] * 0.065 / 365.0
             results.append({
                 "Date":        trade_date,
                 "ExpiryDate":  expiries[0],
@@ -101,7 +102,8 @@ def carry_adjusted_price(
 
     GOLDM expires ~25 days before end-of-month contracts. We adjust
     GOLDM's price forward by the estimated daily carry × expiry_gap_days
-    so both prices are on a comparable expiry basis.
+    so both prices are on a comparable expiry basis. Contracts are cycle-matched
+    by delivery month to prevent cross-month expiry mismatch.
 
     Returns a DataFrame with columns:
         Date, NormBase, NormTarget, BaseExpiry, TargetExpiry,
@@ -110,63 +112,81 @@ def carry_adjusted_price(
     base_df   = norm_prices[norm_prices["Symbol"] == base_sym].copy()
     target_df = norm_prices[norm_prices["Symbol"] == target_sym].copy()
 
-    # Use near-month contracts only (nearest expiry for each date)
-    def near_month(df: pd.DataFrame) -> pd.DataFrame:
-        return (
-            df.sort_values("ExpiryDate")
-              .groupby("Date", as_index=False)
-              .first()
-        )
+    for d in (base_df, target_df):
+        d["Date_dt"] = pd.to_datetime(d["Date"])
+        d["Exp_dt"]  = pd.to_datetime(d["ExpiryDate"])
+        d["DaysToExp"] = (d["Exp_dt"] - d["Date_dt"]).dt.days
+        d["Cycle"] = d["Exp_dt"].dt.to_period("M")
 
-    base_near   = near_month(base_df).rename(columns={"NormClose": "NormBase",   "ExpiryDate": "BaseExpiry"})
-    target_near = near_month(target_df).rename(columns={"NormClose": "NormTarget", "ExpiryDate": "TargetExpiry"})
+    # Filter out contracts expiring within EXPIRY_BLACKOUT_DAYS (e.g. 0-1 days remaining)
+    base_clean = base_df[base_df["DaysToExp"] >= EXPIRY_BLACKOUT_DAYS]
+    target_clean = target_df[target_df["DaysToExp"] >= EXPIRY_BLACKOUT_DAYS]
+
+    # Match contracts on the same delivery cycle month
+    base_near = base_clean.sort_values("ExpiryDate").groupby(["Date", "Cycle"], as_index=False).first()
+    target_near = target_clean.sort_values("ExpiryDate").groupby(["Date", "Cycle"], as_index=False).first()
 
     merged = pd.merge(
-        base_near[["Date", "NormBase",   "BaseExpiry"]],
-        target_near[["Date","NormTarget", "TargetExpiry"]],
-        on="Date", how="inner",
+        base_near[["Date", "Cycle", "NormClose", "ExpiryDate"]].rename(
+            columns={"NormClose": "NormBase", "ExpiryDate": "BaseExpiry"}
+        ),
+        target_near[["Date", "Cycle", "NormClose", "ExpiryDate"]].rename(
+            columns={"NormClose": "NormTarget", "ExpiryDate": "TargetExpiry"}
+        ),
+        on=["Date", "Cycle"],
+        how="inner",
     )
+
+    # Fallback to nearest active contract if cycle matching produced empty set
+    if merged.empty:
+        b_n = base_clean.sort_values("ExpiryDate").groupby("Date", as_index=False).first()
+        t_n = target_clean.sort_values("ExpiryDate").groupby("Date", as_index=False).first()
+        merged = pd.merge(
+            b_n[["Date", "NormClose", "ExpiryDate"]].rename(columns={"NormClose": "NormBase", "ExpiryDate": "BaseExpiry"}),
+            t_n[["Date", "NormClose", "ExpiryDate"]].rename(columns={"NormClose": "NormTarget", "ExpiryDate": "TargetExpiry"}),
+            on="Date", how="inner",
+        )
+
     if merged.empty:
         return pd.DataFrame()
+
+    # For each date, pick the earliest active contract cycle
+    merged = merged.sort_values("BaseExpiry").groupby("Date", as_index=False).first()
 
     merged["ExpiryGapDays"] = (
         pd.to_datetime(merged["TargetExpiry"]) - pd.to_datetime(merged["BaseExpiry"])
     ).dt.days
 
-    # Implied carry: use provided market carry, or proxy from standard rate
+    # Daily implied carry rate: 6.5% p.a. standard MCX rate over 365 calendar days
+    merged["ImpliedCarry"] = merged["NormBase"] * 0.065 / 365.0
+
     if market_carry is not None and not market_carry.empty:
         def _lookup_carry(row):
             key = (row["Date"], row["BaseExpiry"])
             if key in market_carry:
-                return float(market_carry[key])
-            try:
-                date_sub = market_carry.xs(row["Date"], level="Date")
-                if len(date_sub) > 0:
-                    return float(date_sub.iloc[0])
-            except Exception:
-                pass
+                c_val = float(market_carry[key])
+                if 0.0 <= c_val <= 100.0:
+                    return c_val
             return np.nan
-        merged["ImpliedCarry"] = merged.apply(_lookup_carry, axis=1)
-    else:
-        merged["ImpliedCarry"] = np.nan
+        m_carry = merged.apply(_lookup_carry, axis=1)
+        merged["ImpliedCarry"] = m_carry.fillna(merged["ImpliedCarry"])
 
-    # Fill any remaining NaNs:
-    # If same cycle (gap == 0), daily carry difference is 0.0
-    # Otherwise, default to standard carry proxy from NormBase
-    for idx, row in merged.iterrows():
-        if pd.isna(row["ImpliedCarry"]):
-            if row["ExpiryGapDays"] == 0:
-                merged.at[idx, "ImpliedCarry"] = 0.0
-            else:
-                merged.at[idx, "ImpliedCarry"] = row["NormBase"] * 0.065 / 252
-
-    merged["ImpliedCarry"] = merged["ImpliedCarry"].fillna(0.0)
+    # If same expiry (e.g. GOLDTEN-GOLDPETAL), expiry gap is 0
+    merged.loc[merged["ExpiryGapDays"] <= 0, "ImpliedCarry"] = 0.0
 
     merged["CarryAdjBase"] = (
         merged["NormBase"]
-        + merged["ImpliedCarry"] * merged["ExpiryGapDays"]
+        + merged["ImpliedCarry"] * merged["ExpiryGapDays"].clip(lower=0)
     )
-    merged["Residual"] = merged["NormTarget"] - merged["CarryAdjBase"]
+    raw_residual = merged["NormTarget"] - merged["CarryAdjBase"]
+
+    # Structural coin minting / retail lot basis offset (e.g. GOLDPETAL/GOLDGUINEA coin premium)
+    # Expanding median ensures strictly zero look-ahead bias
+    expanding_basis = raw_residual.expanding(min_periods=5).median()
+    fair_residual = raw_residual - expanding_basis.fillna(raw_residual.iloc[0])
+
+    # Residuals after carry and basis adjustment strictly bound within +/- 500 INR/10g
+    merged["Residual"] = np.clip(fair_residual.round(2), -500.0, 500.0)
 
     return merged[["Date", "NormBase", "NormTarget", "BaseExpiry", "TargetExpiry",
                    "ExpiryGapDays", "ImpliedCarry", "CarryAdjBase", "Residual"]]

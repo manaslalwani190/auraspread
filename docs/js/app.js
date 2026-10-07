@@ -796,6 +796,9 @@ function renderHeatmapChart() {
     x: allDates,
     y: pairs,
     type: 'heatmap',
+    zmin: -500,
+    zmax: 500,
+    zmid: 0,
     colorscale: [
       [0.0, c.copperNeg],
       [0.45, '#2A2016'],

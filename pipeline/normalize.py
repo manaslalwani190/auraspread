@@ -4,7 +4,12 @@ Normalization of MCX gold contract prices to INR per 10 g of 999 gold.
 This is the core unit-tested transformation.
 """
 
-from __future__ import annotations
+import sys
+from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
 import pandas as pd
 import numpy as np
@@ -46,10 +51,11 @@ def normalize_price(
     -------
     float : Normalised price in INR per norm_unit_g of norm_purity gold
     """
-    if symbol not in contracts:
+    sym = symbol.strip().upper() if isinstance(symbol, str) else symbol
+    if sym not in contracts:
         raise ValueError(f"Unknown symbol: {symbol!r}. Expected one of {list(contracts)}")
 
-    spec        = contracts[symbol]
+    spec        = contracts[sym]
     quote_unit  = spec["quote_unit_g"]
     purity      = spec["purity"]
 
@@ -97,14 +103,68 @@ def build_normalized_panel(
 
 def purity_factor(symbol: str, contracts: dict = CONTRACTS) -> float:
     """Return the purity-scaling factor (norm_purity / symbol_purity)."""
-    return NORM_PURITY / contracts[symbol]["purity"]
+    sym = symbol.strip().upper() if isinstance(symbol, str) else symbol
+    return NORM_PURITY / contracts[sym]["purity"]
 
 
 def quote_unit_factor(symbol: str, contracts: dict = CONTRACTS) -> float:
     """Return the gram-scaling factor (norm_unit_g / quote_unit_g)."""
-    return NORM_UNIT_G / contracts[symbol]["quote_unit_g"]
+    sym = symbol.strip().upper() if isinstance(symbol, str) else symbol
+    return NORM_UNIT_G / contracts[sym]["quote_unit_g"]
 
 
 def total_norm_factor(symbol: str, contracts: dict = CONTRACTS) -> float:
     """Combined multiplier applied to raw price to get normalized price."""
     return purity_factor(symbol, contracts) * quote_unit_factor(symbol, contracts)
+
+
+if __name__ == "__main__":
+    print("=" * 68)
+    print("AuraSpread - MCX Gold Contract Normalization Verification")
+    print("Target: INR per 10g of 999 purity gold")
+    print("=" * 68)
+
+    # Baseline verification: near INR 75,000/10g
+    print("\n[Baseline Contract Price Normalization ~ INR 75,000/10g]:")
+    sample_raw = {
+        "GOLDM": 74700.0,       # 10g quote, 995 purity -> × 999/995 = 75,000.30
+        "GOLDTEN": 75000.0,     # 10g quote, 999 purity -> × 1.0     = 75,000.00
+        "GOLDGUINEA": 60000.0,  # 8g quote,  999 purity -> × 10/8    = 75,000.00
+        "GOLDPETAL": 7500.0,    # 1g quote,  999 purity -> × 10.0    = 75,000.00
+    }
+    norm_vals = {}
+    for sym, raw_p in sample_raw.items():
+        norm_p = normalize_price(raw_p, sym)
+        norm_vals[sym] = norm_p
+        tf = total_norm_factor(sym)
+        print(f"  {sym:12s}: Raw = {raw_p:10.2f} | Factor = {tf:8.5f} | Norm = {norm_p:10.2f} INR/10g (999)")
+
+    mean_norm = float(np.mean(list(norm_vals.values())))
+    max_dev_pct = max(abs(v - mean_norm) / mean_norm for v in norm_vals.values()) * 100
+    print(f"  --> Mean Normalized Price : INR {mean_norm:,.2f}/10g")
+    print(f"  --> Max Deviation from Mean: {max_dev_pct:.4f}% (Well within +/-2% limit: {max_dev_pct <= 2.0})")
+
+    # Historical data verification if processed cache exists
+    from pipeline.config import DATA_PROC
+    pq_path = DATA_PROC / "gold_contracts_clean.parquet"
+    if pq_path.exists():
+        try:
+            hist_df = pd.read_parquet(pq_path)
+            for d, grp in hist_df.groupby("Date"):
+                syms = set(grp["Symbol"].str.strip())
+                if {"GOLDM", "GOLDTEN", "GOLDGUINEA", "GOLDPETAL"}.issubset(syms):
+                    print(f"\n[Historical MCX Bhavcopy Data Verification for Date: {d}]:")
+                    hist_norms = {}
+                    for sym in ["GOLDM", "GOLDTEN", "GOLDGUINEA", "GOLDPETAL"]:
+                        row = grp[grp["Symbol"].str.strip() == sym].iloc[0]
+                        rp = float(row["Close"])
+                        np_val = normalize_price(rp, sym)
+                        hist_norms[sym] = np_val
+                        print(f"  {sym:12s}: Raw Close = {rp:10.2f} (Exp: {row['ExpiryDate']}) -> Norm = {np_val:10.2f} INR/10g")
+                    h_mean = float(np.mean(list(hist_norms.values())))
+                    h_dev = max(abs(v - h_mean) / h_mean for v in hist_norms.values()) * 100
+                    print(f"  --> Mean: INR {h_mean:,.2f}/10g | Max Deviation: {h_dev:.2f}% (Within +/-2%: {h_dev <= 2.0})")
+                    break
+        except Exception as err:
+            print(f"  (Parquet verification skipped: {err})")
+

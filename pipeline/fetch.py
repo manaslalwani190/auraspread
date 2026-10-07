@@ -175,6 +175,8 @@ def _normalise_columns(df: pd.DataFrame) -> Optional[pd.DataFrame]:
     df = df.copy()
     df.columns = [c.strip().lower() for c in df.columns]
     df = df.rename(columns=_COLUMN_MAP)
+    if "InstrumentName" not in df.columns:
+        df["InstrumentName"] = _FUTCOM_NAME
     missing = _REQUIRED_COLS - set(df.columns)
     if missing:
         log.error(f"MCX response missing columns: {missing}  (got {list(df.columns)})")
