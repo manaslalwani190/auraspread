@@ -1517,14 +1517,15 @@ function renderTermStructureChart() {
     }
 
     traces.push({
-      x: currentSnapshot.map(r => `${r.days_to_expiry}d (${r.expiry})`),
+      x: currentSnapshot.map(r => r.days_to_expiry),
       y: yVals,
       name: sym,
       type: 'scatter',
       mode: 'lines+markers',
       line: { color: colors[idx], width: 3 },
       marker: { size: 8, color: colors[idx] },
-      hovertemplate: `<b>${sym}</b><br>Expiry: %{x}<br>Price: ₹%{y:,.1f}<extra></extra>`,
+      customdata: currentSnapshot.map(r => r.expiry),
+      hovertemplate: `<b>${sym}</b><br>Expiry: %{customdata} (%{x}d)<br>Price: ₹%{y:,.1f}<extra></extra>`,
     });
   });
 
@@ -1532,12 +1533,16 @@ function renderTermStructureChart() {
     paper_bgcolor: 'transparent',
     plot_bgcolor: c.bgPlot,
     font: { color: c.textMain, family: 'Inter' },
-    margin: { t: 30, r: 30, b: 60, l: 85 },
+    margin: { l: 70, r: 30, t: 50, b: 120 },
     legend: { orientation: 'h', y: 1.15, x: 0.1, font: { color: c.textMain } },
     xaxis: {
       title: 'Days to Expiry (Contract Maturity)',
       gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 11, color: c.textMuted },
+      tickangle: -45,
+      ticksuffix: 'd',
+      tickfont: { family: 'JetBrains Mono', size: 10, color: c.textMuted },
+      nticks: 8,
+      automargin: true,
     },
     yaxis: {
       title: STATE.showRawCurve ? 'Raw MCX Quote (Unadjusted INR)' : 'Standardized INR / 10g (999 Purity)',
