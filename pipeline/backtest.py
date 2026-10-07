@@ -214,13 +214,19 @@ def run_backtest(
         active_trade.net_pnl   = raw_pnl - cost
         trades.append(active_trade)
 
-    # ── Metrics ──────────────────────────────────────────────────────────
+    # Compute peak-to-trough underwater drawdown series
+    eq_arr = np.array(equity_net, dtype=float)
+    peak_arr = np.maximum.accumulate(eq_arr) if len(eq_arr) > 0 else np.array([])
+    drawdown_series = [round(float(e - p), 2) for p, e in zip(peak_arr, eq_arr)] # negative values for underwater plot
+
+    # Metrics
     metrics = _compute_metrics(trades, equity_net, test_df, gold_prices)
 
     return {
         "trades":       [_trade_to_dict(t) for t in trades],
         "equity_gross": equity_gross,
         "equity_net":   equity_net,
+        "drawdown":     drawdown_series,
         "dates":        [str(d) for d in dates_list],
         "split_date":   str(split_date),
         "metrics":      metrics,
@@ -326,12 +332,14 @@ def _compute_metrics(
     if len(eq) > 1:
         daily_ret = np.diff(eq)
         sharpe = (np.mean(daily_ret) / (np.std(daily_ret) + 1e-10)) * np.sqrt(252)
-        peak    = np.maximum.accumulate(eq)
-        dd      = (eq - peak) / (np.abs(peak) + 1e-10)
-        max_dd  = float(np.min(dd))
+        peak   = np.maximum.accumulate(eq)
+        dd     = peak - eq  # Drawdown in INR (positive value >= 0)
+        max_dd = float(np.max(dd)) if len(dd) > 0 else 0.0
+        avg_dd = float(np.mean(dd)) if len(dd) > 0 else 0.0
     else:
         sharpe = 0.0
         max_dd = 0.0
+        avg_dd = 0.0
 
     if gold_prices is None and "NormBase" in test_df.columns:
         gold_prices = test_df["NormBase"]
@@ -344,7 +352,8 @@ def _compute_metrics(
         "net_pnl":      round(net_pnl,   2),
         "hit_rate":     round(hit_rate,  4),
         "sharpe":       round(float(sharpe), 4),
-        "max_drawdown": round(max_dd, 4),
+        "max_drawdown": round(max_dd, 2),
+        "avg_drawdown": round(avg_dd, 2),
         "turnover":     n,
         "beta_to_gold": beta_to_gold,
     }

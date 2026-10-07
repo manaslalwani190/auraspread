@@ -223,6 +223,7 @@ def run() -> None:
             "equity_gross": bt_results["equity_gross"],
             "equity_net": bt_results["equity_net"],
             "equity_gold_neutral": gold_neutral_curve,
+            "drawdown": bt_results.get("drawdown", []),
             "split_date": bt_results["split_date"],
             "metrics": bt_results["metrics"],
         }
@@ -262,11 +263,17 @@ def run() -> None:
 
     calendar = build_calendar()
 
+    actual_start = str(raw_df["Date"].min()) if not raw_df.empty and "Date" in raw_df.columns else str(FETCH_START)
+    actual_end   = str(raw_df["Date"].max()) if not raw_df.empty and "Date" in raw_df.columns else str(FETCH_END)
+    actual_sessions = int(raw_df["Date"].nunique()) if not raw_df.empty and "Date" in raw_df.columns else 0
+
     meta = {
         "is_synthetic": is_synthetic,
         "data_source": data_source_msg,
-        "date_start": str(FETCH_START),
-        "date_end": str(FETCH_END),
+        "date_start": actual_start,
+        "date_end": actual_end,
+        "trading_sessions": actual_sessions,
+        "total_records": len(raw_df),
         "generated_at": datetime.utcnow().isoformat() + "Z",
         "norm_target": "INR per 10g (999 Purity Gold)",
         "contracts_tracked": list(CONTRACTS.keys()),
