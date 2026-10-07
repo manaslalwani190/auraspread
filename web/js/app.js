@@ -48,15 +48,17 @@ function hideChartSkeleton(chartId) {
 function getThemeColors() {
   const isParchment = document.documentElement.getAttribute('data-theme') === 'parchment';
   return {
-    bgCard: isParchment ? '#FAF6F0' : '#1C1A14',
-    bgPlot: isParchment ? '#EDE4DC' : '#14130F',
+    bgCard: isParchment ? '#FAF6F0' : '#332C18',
+    bgPlot: isParchment ? '#EDE4DC' : '#2A2312',
+    bgPaper: isParchment ? '#FAF6F0' : '#2A2312',
     textMain: isParchment ? '#1C1917' : '#F4EFE0',
-    textMuted: isParchment ? '#57524C' : '#A39B8B',
-    accentGold: isParchment ? '#9E7310' : '#D4A62A',
-    accentGoldBright: isParchment ? '#835C07' : '#F7C844',
-    borderBronze: isParchment ? '#D1C5B6' : '#383225',
-    copperNeg: isParchment ? '#B3381B' : '#D96547',
-    verdigrisPos: isParchment ? '#1F7360' : '#5AB39E',
+    textSecondary: isParchment ? '#3D3935' : '#C4B896',
+    textMuted: isParchment ? '#57524C' : '#8A7D5A',
+    accentGold: isParchment ? '#9E7310' : '#FFBE0B',
+    accentGoldBright: isParchment ? '#835C07' : '#FFD04D',
+    borderBronze: isParchment ? '#D1C5B6' : 'rgba(255, 190, 11, 0.2)',
+    copperNeg: isParchment ? '#B3381B' : '#E05A3A',
+    verdigrisPos: isParchment ? '#1F7360' : '#4EAD96',
   };
 }
 
@@ -1440,9 +1442,9 @@ function renderHeatmapChart() {
     zmid: 0,
     colorscale: [
       [0.0, c.copperNeg],
-      [0.45, '#2A2016'],
-      [0.5, '#161510'],
-      [0.55, '#152420'],
+      [0.45, '#261F12'],
+      [0.5, c.bgPlot],
+      [0.55, '#202A24'],
       [1.0, c.verdigrisPos],
     ],
     colorbar: {
@@ -1459,7 +1461,7 @@ function renderHeatmapChart() {
   };
 
   const layout = {
-    paper_bgcolor: 'transparent',
+    paper_bgcolor: c.bgPaper,
     plot_bgcolor: c.bgPlot,
     font: { color: c.textMain, family: 'Inter' },
     margin: { t: 25, r: 40, b: 65, l: 165 },
@@ -1530,7 +1532,7 @@ function renderTermStructureChart() {
   });
 
   const layout = {
-    paper_bgcolor: 'transparent',
+    paper_bgcolor: c.bgPaper,
     plot_bgcolor: c.bgPlot,
     font: { color: c.textMain, family: 'Inter' },
     margin: { l: 70, r: 30, t: 50, b: 120 },
@@ -1587,7 +1589,7 @@ function renderDecompositionChart() {
 
   const layout = {
     barmode: 'relative',
-    paper_bgcolor: 'transparent',
+    paper_bgcolor: c.bgPaper,
     plot_bgcolor: c.bgPlot,
     font: { color: c.textMain, family: 'Inter' },
     margin: { t: 20, r: 30, b: 60, l: 75 },
@@ -1771,14 +1773,14 @@ function renderEquityCurveChart() {
         type: 'scatter',
         mode: 'lines',
         yaxis: 'y2',
-        line: { color: 'rgba(212, 166, 42, 0.4)', width: 1.5 },
+        line: { color: 'rgba(255, 190, 11, 0.4)', width: 1.5 },
         hovertemplate: 'Gold Return: %{y:.2f}%<extra></extra>',
       });
     }
   }
 
   const layout = {
-    paper_bgcolor: 'transparent',
+    paper_bgcolor: c.bgPaper,
     plot_bgcolor: c.bgPlot,
     font: { color: c.textMain, family: 'Inter' },
     margin: { t: 20, r: 60, b: 60, l: 85 },

@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AuraSpread | MCX Gold Contract Relative-Value Monitor</title>
   <meta name="description" content="Is the price gap between MCX gold contracts a real arbitrage opportunity, or just carry and trading costs? Quantitative analysis for GOLDM, GOLDTEN, GOLDGUINEA, and GOLDPETAL.">
-  <meta name="theme-color" content="#0E0D0A">
+  <meta name="theme-color" content="#2A2312">
   
   <!-- Open Graph / Social Meta Tags -->
   <meta property="og:title" content="AuraSpread | MCX Gold Contract Relative-Value Monitor">
   <meta property="og:description" content="Decomposing MCX gold spreads into physical purity adjustments, financing carry, and true residual mispricings. An honest quantitative audit.">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230E0D0A'/><text x='50' y='65' font-size='50' font-family='serif' fill='%23F7C844' text-anchor='middle'>Au</text></svg>">
+  <meta property="og:image" content="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%232A2312'/><text x='50' y='65' font-size='50' font-family='serif' fill='%23FFBE0B' text-anchor='middle'>Au</text></svg>">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="AuraSpread | MCX Gold Relative-Value Monitor">
   <meta name="twitter:description" content="Quantitative relative-value analysis across MCX GOLDM, GOLDTEN, GOLDGUINEA, and GOLDPETAL.">
@@ -35,30 +35,30 @@
         <svg class="brand-crest-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="mCrestRimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#FFF2B2" />
-              <stop offset="30%" stop-color="#F5CF63" />
-              <stop offset="70%" stop-color="#C2921E" />
-              <stop offset="100%" stop-color="#6E4804" />
+              <stop offset="0%" stop-color="#FFF0B3" />
+              <stop offset="30%" stop-color="#FFD04D" />
+              <stop offset="70%" stop-color="#FFBE0B" />
+              <stop offset="100%" stop-color="#B38200" />
             </linearGradient>
             <linearGradient id="mCrestLeftFacet" x1="10%" y1="20%" x2="50%" y2="90%">
               <stop offset="0%" stop-color="#FFFBE0" />
               <stop offset="25%" stop-color="#FFE07D" />
-              <stop offset="60%" stop-color="#F0B830" />
-              <stop offset="100%" stop-color="#B8800C" />
+              <stop offset="60%" stop-color="#FFD04D" />
+              <stop offset="100%" stop-color="#FFBE0B" />
             </linearGradient>
             <linearGradient id="mCrestRightFacet" x1="50%" y1="30%" x2="90%" y2="90%">
-              <stop offset="0%" stop-color="#E8AD23" />
-              <stop offset="40%" stop-color="#BF820A" />
-              <stop offset="80%" stop-color="#8C5A02" />
-              <stop offset="100%" stop-color="#593600" />
+              <stop offset="0%" stop-color="#FFBE0B" />
+              <stop offset="40%" stop-color="#E5A800" />
+              <stop offset="80%" stop-color="#B38200" />
+              <stop offset="100%" stop-color="#664900" />
             </linearGradient>
             <linearGradient id="mCrestTopBevel" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9" />
-              <stop offset="50%" stop-color="#FFDE7A" stop-opacity="0.6" />
-              <stop offset="100%" stop-color="#A36E05" stop-opacity="0.2" />
+              <stop offset="50%" stop-color="#FFD04D" stop-opacity="0.6" />
+              <stop offset="100%" stop-color="#FFBE0B" stop-opacity="0.2" />
             </linearGradient>
             <filter id="mCrestGoldShadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#F5CF63" flood-opacity="0.3"/>
+              <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#FFBE0B" flood-opacity="0.3"/>
               <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.5"/>
             </filter>
           </defs>
@@ -158,30 +158,30 @@
           <svg class="brand-crest-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="crestRimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#FFF2B2" />
-                <stop offset="30%" stop-color="#F5CF63" />
-                <stop offset="70%" stop-color="#C2921E" />
-                <stop offset="100%" stop-color="#6E4804" />
+                <stop offset="0%" stop-color="#FFF0B3" />
+                <stop offset="30%" stop-color="#FFD04D" />
+                <stop offset="70%" stop-color="#FFBE0B" />
+                <stop offset="100%" stop-color="#B38200" />
               </linearGradient>
               <linearGradient id="crestLeftFacet" x1="10%" y1="20%" x2="50%" y2="90%">
                 <stop offset="0%" stop-color="#FFFBE0" />
                 <stop offset="25%" stop-color="#FFE07D" />
-                <stop offset="60%" stop-color="#F0B830" />
-                <stop offset="100%" stop-color="#B8800C" />
+                <stop offset="60%" stop-color="#FFD04D" />
+                <stop offset="100%" stop-color="#FFBE0B" />
               </linearGradient>
               <linearGradient id="crestRightFacet" x1="50%" y1="30%" x2="90%" y2="90%">
-                <stop offset="0%" stop-color="#E8AD23" />
-                <stop offset="40%" stop-color="#BF820A" />
-                <stop offset="80%" stop-color="#8C5A02" />
-                <stop offset="100%" stop-color="#593600" />
+                <stop offset="0%" stop-color="#FFBE0B" />
+                <stop offset="40%" stop-color="#E5A800" />
+                <stop offset="80%" stop-color="#B38200" />
+                <stop offset="100%" stop-color="#664900" />
               </linearGradient>
               <linearGradient id="crestTopBevel" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9" />
-                <stop offset="50%" stop-color="#FFDE7A" stop-opacity="0.6" />
-                <stop offset="100%" stop-color="#A36E05" stop-opacity="0.2" />
+                <stop offset="50%" stop-color="#FFD04D" stop-opacity="0.6" />
+                <stop offset="100%" stop-color="#FFBE0B" stop-opacity="0.2" />
               </linearGradient>
               <filter id="crestGoldShadow" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#F5CF63" flood-opacity="0.3"/>
+                <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#FFBE0B" flood-opacity="0.3"/>
                 <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.5"/>
               </filter>
             </defs>
@@ -1037,7 +1037,7 @@
                 Bhavcopy Feed & Pipeline Validation Metrics
               </h3>
             </div>
-            <span class="status-badge" style="background: rgba(212, 166, 42, 0.12); color: var(--accent-gold-bright); border: 1px solid var(--accent-gold);">
+            <span class="status-badge" style="background: rgba(255, 190, 11, 0.12); color: var(--gold); border: 1px solid var(--gold);">
               PASSED 18 TESTS
             </span>
           </div>
