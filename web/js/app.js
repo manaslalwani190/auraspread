@@ -167,10 +167,6 @@ const THEME_STORAGE_KEY = 'auraspread_theme';
 function getInitialTheme() {
   const saved = localStorage.getItem(THEME_STORAGE_KEY);
   if (saved === 'parchment' || saved === 'light') return 'parchment';
-  if (saved === 'vault' || saved === 'dark') return 'vault';
-  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-    return 'parchment';
-  }
   return 'vault';
 }
 
@@ -178,6 +174,8 @@ function applyTheme(isParchment, persist = true) {
   STATE.isParchment = isParchment;
   const themeName = isParchment ? 'parchment' : 'vault';
   document.documentElement.setAttribute('data-theme', themeName);
+  document.documentElement.style.backgroundColor = isParchment ? '#F5EFEB' : '#2A2312';
+  document.body.style.backgroundColor = isParchment ? '#F5EFEB' : '#2A2312';
 
   // Sync Header Theme Buttons (Pill)
   const btnLight = document.getElementById('themeBtnLight');
@@ -648,18 +646,9 @@ function escapeHtml(str) {
 
 // ── Theme & Explain Toggles ───────────────────────────────────────────────
 function setupToggles() {
-  // Initialize theme from storage or system preference
+  // Initialize theme from storage (defaults to vault dark)
   const initialTheme = getInitialTheme();
   applyTheme(initialTheme === 'parchment', false);
-
-  // Listen to system preference changes if user hasn't explicitly set theme
-  if (window.matchMedia) {
-    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
-      if (!localStorage.getItem(THEME_STORAGE_KEY)) {
-        applyTheme(e.matches, false);
-      }
-    });
-  }
 
   // Header Theme Switcher Pill buttons
   const btnLight = document.getElementById('themeBtnLight');
