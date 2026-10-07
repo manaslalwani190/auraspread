@@ -163,17 +163,23 @@ p, li, span, td, div {
 .brand-icon {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, var(--accent-gold-bright), var(--accent-gold-dim));
-  clip-path: polygon(15% 0%, 85% 0%, 100% 15%, 100% 85%, 85% 100%, 15% 100%, 0% 85%, 0% 15%);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #0E0D0A;
-  font-weight: 900;
-  font-family: var(--font-serif);
-  font-size: 1.15rem;
-  box-shadow: var(--shadow-gold);
   flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), filter 0.25s ease;
+  cursor: pointer;
+}
+
+.brand-icon:hover {
+  transform: translateY(-1px) scale(1.05);
+}
+
+.brand-crest-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
 }
 
 .brand-text h1 {
@@ -355,6 +361,285 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+/* ── Top-Right Header Search Bar ────────────────────────────────────────── */
+.search-box-wrap {
+  position: relative;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-bronze);
+  border-radius: 20px;
+  padding: 0.35rem 0.75rem 0.35rem 0.85rem;
+  width: 210px;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  position: relative;
+  cursor: text;
+}
+
+.search-bar:focus-within,
+.search-bar.active {
+  width: 270px;
+  border-color: var(--accent-gold);
+  background: var(--bg-card);
+  box-shadow: 0 0 0 2px var(--gold-glow);
+}
+
+.search-bar-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.search-bar:focus-within .search-bar-icon {
+  color: var(--accent-gold-bright);
+}
+
+.search-bar-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-family: var(--font-sans);
+  width: 100%;
+}
+
+.search-bar-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
+.search-shortcut-badge {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.search-shortcut-badge kbd {
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-bronze-light);
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+[data-theme="parchment"] .search-shortcut-badge kbd {
+  background: var(--bg-primary);
+  border-color: var(--border-bronze);
+  color: var(--text-secondary);
+}
+
+/* ── Search Dropdown Results Panel ──────────────────────────────────────── */
+.search-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  max-height: 440px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-chamfer);
+  box-shadow: var(--shadow-vault), 0 15px 40px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+  z-index: 250;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(16px);
+  animation: searchDropFade 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes searchDropFade {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.search-dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--border-bronze);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  background: var(--bg-secondary);
+}
+
+.search-esc-hint kbd {
+  font-size: 0.66rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-bronze);
+  color: var(--text-secondary);
+}
+
+.search-results-list {
+  overflow-y: auto;
+  max-height: 330px;
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  padding: 0.35rem 0;
+}
+
+.search-result-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.6rem 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-left: 3px solid transparent;
+  text-decoration: none;
+  color: inherit;
+}
+
+.search-result-item:hover,
+.search-result-item.selected {
+  background: var(--bg-card-hover);
+  border-left-color: var(--accent-gold);
+}
+
+.search-result-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.search-result-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--accent-gold-bright);
+  font-family: var(--font-sans);
+}
+
+.search-result-badge {
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  background: rgba(212, 166, 42, 0.12);
+  color: var(--accent-gold);
+  border: 1px solid var(--border-bronze);
+  font-weight: 600;
+}
+
+.search-result-desc {
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.search-dropdown-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.45rem 0.85rem;
+  border-top: 1px solid var(--border-bronze);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  background: var(--bg-secondary);
+}
+
+.search-dropdown-footer kbd {
+  padding: 0.05rem 0.25rem;
+  font-size: 0.65rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-bronze);
+  border-radius: 2px;
+}
+
+.search-empty-state {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+/* ── Top-Right Header Theme Toggle Pill ─────────────────────────────────── */
+.theme-toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-bronze);
+  border-radius: 20px;
+  padding: 2px;
+  gap: 2px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.theme-pill-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  padding: 4px 7px;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.theme-pill-btn:hover {
+  color: var(--text-primary);
+}
+
+.theme-pill-btn.active {
+  background: var(--bg-card);
+  color: var(--accent-gold-bright);
+  border-color: var(--border-gold);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transform: scale(1.02);
+}
+
+[data-theme="parchment"] .theme-pill-btn.active {
+  background: #FFFFFF;
+  color: var(--accent-gold-bright);
+  box-shadow: 0 2px 6px rgba(90, 70, 50, 0.15);
+}
+
+.theme-pill-icon {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+/* ── Target Pulse Highlight when Navigating from Search ─────────────────── */
+@keyframes searchTargetFlash {
+  0% { outline: 2px solid var(--accent-gold-bright); box-shadow: 0 0 25px var(--accent-gold); }
+  50% { outline: 2px solid var(--accent-gold); box-shadow: 0 0 12px var(--accent-gold); }
+  100% { outline: 2px solid transparent; box-shadow: none; }
+}
+
+.search-highlight-target {
+  animation: searchTargetFlash 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Global Transition for Theme Switching */
+body, .side-rail, .status-bar, .chart-card, .stat-tile-card, .hero-verdict-card, .method-card, .table-card, .scale-card, .signal-control-card, .metric-card, .ingot-card, .guide-steps-card, .search-bar, .theme-toggle-pill {
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .data-origin-text {
@@ -2243,13 +2528,37 @@ body.show-explain .explain-tag {
 
   .status-bar {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     top: 55px;
+    gap: 0.75rem;
   }
 
   .status-right {
     width: 100%;
-    justify-content: space-between;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .search-box-wrap {
+    flex-grow: 1;
+    min-width: 170px;
+  }
+
+  .search-bar {
+    width: 100%;
+  }
+
+  .search-bar:focus-within,
+  .search-bar.active {
+    width: 100%;
+  }
+
+  .search-dropdown {
+    right: 0;
+    left: 0;
+    width: 100%;
+    max-width: 100%;
   }
 }
 

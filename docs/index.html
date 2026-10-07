@@ -16,9 +16,9 @@
   <meta name="twitter:title" content="AuraSpread | MCX Gold Relative-Value Monitor">
   <meta name="twitter:description" content="Quantitative relative-value analysis across MCX GOLDM, GOLDTEN, GOLDGUINEA, and GOLDPETAL.">
 
-  <!-- Inline SVG Favicon (Gold Au on Obsidian Background) -->
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230E0D0A'/%3E%3Ctext x='50%25' y='52%25' font-size='55' font-family='serif' font-weight='900' fill='%23F7C844' text-anchor='middle' dominant-baseline='central'%3EAu%3C/text%3E%3C/svg%3E">
-  <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230E0D0A'/%3E%3Ctext x='50%25' y='52%25' font-size='55' font-family='serif' font-weight='900' fill='%23F7C844' text-anchor='middle' dominant-baseline='central'%3EAu%3C/text%3E%3C/svg%3E">
+  <!-- SVG Favicon (Gold Geometric Insignia) -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="shortcut icon" href="favicon.ico">
 
   <link rel="stylesheet" href="css/style.css">
   <!-- Plotly.js CDN for charts -->
@@ -31,7 +31,47 @@
   <!-- Mobile Top Bar (< 900px) -->
   <header class="mobile-top-bar" id="mobileTopBar">
     <div class="mobile-brand">
-      <div class="brand-icon">Au</div>
+      <div class="brand-icon" aria-label="AuraSpread Insignia">
+        <svg class="brand-crest-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="mCrestRimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#FFF2B2" />
+              <stop offset="30%" stop-color="#F5CF63" />
+              <stop offset="70%" stop-color="#C2921E" />
+              <stop offset="100%" stop-color="#6E4804" />
+            </linearGradient>
+            <linearGradient id="mCrestLeftFacet" x1="10%" y1="20%" x2="50%" y2="90%">
+              <stop offset="0%" stop-color="#FFFBE0" />
+              <stop offset="25%" stop-color="#FFE07D" />
+              <stop offset="60%" stop-color="#F0B830" />
+              <stop offset="100%" stop-color="#B8800C" />
+            </linearGradient>
+            <linearGradient id="mCrestRightFacet" x1="50%" y1="30%" x2="90%" y2="90%">
+              <stop offset="0%" stop-color="#E8AD23" />
+              <stop offset="40%" stop-color="#BF820A" />
+              <stop offset="80%" stop-color="#8C5A02" />
+              <stop offset="100%" stop-color="#593600" />
+            </linearGradient>
+            <linearGradient id="mCrestTopBevel" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9" />
+              <stop offset="50%" stop-color="#FFDE7A" stop-opacity="0.6" />
+              <stop offset="100%" stop-color="#A36E05" stop-opacity="0.2" />
+            </linearGradient>
+            <filter id="mCrestGoldShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#F5CF63" flood-opacity="0.3"/>
+              <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.5"/>
+            </filter>
+          </defs>
+          <g filter="url(#mCrestGoldShadow)">
+            <path d="M 12 20 L 32 20 L 50 37 L 68 20 L 88 20 L 50 88 Z"
+                  fill="url(#mCrestRimGrad)" stroke="#FFE89E" stroke-width="0.75" stroke-linejoin="round" />
+            <path d="M 16 23 L 33 23 L 50 39 L 50 83 Z" fill="url(#mCrestLeftFacet)" />
+            <path d="M 84 23 L 67 23 L 50 39 L 50 83 Z" fill="url(#mCrestRightFacet)" />
+            <line x1="50" y1="39" x2="50" y2="83" stroke="#FFECA8" stroke-width="1.2" stroke-linecap="round" />
+            <path d="M 12 20 L 32 20 L 50 37" fill="none" stroke="url(#mCrestTopBevel)" stroke-width="1.5" stroke-linecap="round" />
+          </g>
+        </svg>
+      </div>
       <div class="mobile-brand-title">
         <span class="m-title">AuraSpread</span>
         <span class="m-sub">MCX Assay Office</span>
@@ -114,7 +154,47 @@
     <!-- Sticky Side-Rail Navigation (Desktop) -->
     <aside class="side-rail" id="sideRail" aria-label="Main sidebar navigation">
       <div class="brand-stamp">
-        <div class="brand-icon">Au</div>
+        <div class="brand-icon" aria-label="AuraSpread Insignia">
+          <svg class="brand-crest-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="crestRimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#FFF2B2" />
+                <stop offset="30%" stop-color="#F5CF63" />
+                <stop offset="70%" stop-color="#C2921E" />
+                <stop offset="100%" stop-color="#6E4804" />
+              </linearGradient>
+              <linearGradient id="crestLeftFacet" x1="10%" y1="20%" x2="50%" y2="90%">
+                <stop offset="0%" stop-color="#FFFBE0" />
+                <stop offset="25%" stop-color="#FFE07D" />
+                <stop offset="60%" stop-color="#F0B830" />
+                <stop offset="100%" stop-color="#B8800C" />
+              </linearGradient>
+              <linearGradient id="crestRightFacet" x1="50%" y1="30%" x2="90%" y2="90%">
+                <stop offset="0%" stop-color="#E8AD23" />
+                <stop offset="40%" stop-color="#BF820A" />
+                <stop offset="80%" stop-color="#8C5A02" />
+                <stop offset="100%" stop-color="#593600" />
+              </linearGradient>
+              <linearGradient id="crestTopBevel" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9" />
+                <stop offset="50%" stop-color="#FFDE7A" stop-opacity="0.6" />
+                <stop offset="100%" stop-color="#A36E05" stop-opacity="0.2" />
+              </linearGradient>
+              <filter id="crestGoldShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#F5CF63" flood-opacity="0.3"/>
+                <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.5"/>
+              </filter>
+            </defs>
+            <g filter="url(#crestGoldShadow)">
+              <path d="M 12 20 L 32 20 L 50 37 L 68 20 L 88 20 L 50 88 Z"
+                    fill="url(#crestRimGrad)" stroke="#FFE89E" stroke-width="0.75" stroke-linejoin="round" />
+              <path d="M 16 23 L 33 23 L 50 39 L 50 83 Z" fill="url(#crestLeftFacet)" />
+              <path d="M 84 23 L 67 23 L 50 39 L 50 83 Z" fill="url(#crestRightFacet)" />
+              <line x1="50" y1="39" x2="50" y2="83" stroke="#FFECA8" stroke-width="1.2" stroke-linecap="round" />
+              <path d="M 12 20 L 32 20 L 50 37" fill="none" stroke="url(#crestTopBevel)" stroke-width="1.5" stroke-linecap="round" />
+            </g>
+          </svg>
+        </div>
         <div class="brand-text">
           <h1>AuraSpread</h1>
           <span>MCX Assay Office</span>
@@ -175,6 +255,62 @@
         </div>
 
         <div class="status-right">
+          <!-- 1. Global Search Box (Ctrl K) -->
+          <div class="search-box-wrap" id="searchBoxWrap">
+            <div class="search-bar" id="searchBar" role="search">
+              <svg class="search-bar-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor">
+                <circle cx="8.5" cy="8.5" r="5.5" stroke-width="1.8"/>
+                <path d="M13 13L17.5 17.5" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+              <input 
+                type="text" 
+                id="globalSearchInput" 
+                class="search-bar-input" 
+                placeholder="Search" 
+                autocomplete="off" 
+                spellcheck="false" 
+                aria-label="Search AuraSpread analytics, contracts, and sections"
+                aria-autocomplete="list"
+                aria-expanded="false"
+                aria-controls="searchResultsList"
+              />
+              <div class="search-shortcut-badge" id="searchShortcutBadge" title="Press Ctrl + K to search">
+                <kbd>Ctrl</kbd> <kbd>K</kbd>
+              </div>
+            </div>
+
+            <!-- Search Results Dropdown Panel -->
+            <div class="search-dropdown" id="searchDropdown" style="display: none;" role="region" aria-label="Search Results">
+              <div class="search-dropdown-header">
+                <span id="searchDropdownCount">Quick Navigation</span>
+                <span class="search-esc-hint">Press <kbd>Esc</kbd> to close</span>
+              </div>
+              <div class="search-results-list" id="searchResultsList" role="listbox">
+                <!-- Dynamically populated via JS -->
+              </div>
+              <div class="search-dropdown-footer">
+                <span>Navigate <kbd>↑</kbd><kbd>↓</kbd></span>
+                <span>Select <kbd>↵</kbd></span>
+                <span>Close <kbd>Esc</kbd></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Dark / Light Theme Toggle Pill -->
+          <div class="theme-toggle-pill" id="themeTogglePill" role="radiogroup" aria-label="Color Theme Switcher">
+            <button type="button" class="theme-pill-btn" id="themeBtnLight" data-theme-val="parchment" title="Switch to Light Mode" aria-label="Light Mode" role="radio" aria-checked="false">
+              <svg class="theme-pill-icon" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd" />
+              </svg>
+            </button>
+            <button type="button" class="theme-pill-btn active" id="themeBtnDark" data-theme-val="vault" title="Switch to Dark Mode" aria-label="Dark Mode" role="radio" aria-checked="true">
+              <svg class="theme-pill-icon" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- 3. Existing Actions & Status Badge -->
           <button class="btn-assay btn-sm" id="btnOpenShortcuts" title="Keyboard Shortcuts (Press ?)">
             <span class="btn-icon">⌨</span> Shortcuts
           </button>
@@ -1043,6 +1179,10 @@
         <button class="shortcuts-close-btn" id="shortcutsCloseBtn" aria-label="Close shortcuts modal">&times;</button>
       </div>
       <div class="shortcuts-list">
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Global Search & Quick Jump</span>
+          <kbd class="kbd-badge">Ctrl + K</kbd>
+        </div>
         <div class="shortcut-row">
           <span class="shortcut-desc">Open / Close this shortcuts modal</span>
           <kbd class="kbd-badge">?</kbd>

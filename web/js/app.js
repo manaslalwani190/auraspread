@@ -65,6 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupNavigation();
   setupScrollProgress();
   setupToggles();
+  setupGlobalSearch();
   setupMobileDrawer();
   setupTour();
   setupKeyboardShortcuts();
@@ -158,20 +159,527 @@ function setupMobileDrawer() {
   });
 }
 
+// ── Theme Management ───────────────────────────────────────────────────────
+const THEME_STORAGE_KEY = 'auraspread_theme';
+
+function getInitialTheme() {
+  const saved = localStorage.getItem(THEME_STORAGE_KEY);
+  if (saved === 'parchment' || saved === 'light') return 'parchment';
+  if (saved === 'vault' || saved === 'dark') return 'vault';
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+    return 'parchment';
+  }
+  return 'vault';
+}
+
+function applyTheme(isParchment, persist = true) {
+  STATE.isParchment = isParchment;
+  const themeName = isParchment ? 'parchment' : 'vault';
+  document.documentElement.setAttribute('data-theme', themeName);
+
+  // Sync Header Theme Buttons (Pill)
+  const btnLight = document.getElementById('themeBtnLight');
+  const btnDark = document.getElementById('themeBtnDark');
+  if (btnLight && btnDark) {
+    btnLight.classList.toggle('active', isParchment);
+    btnLight.setAttribute('aria-checked', isParchment ? 'true' : 'false');
+    btnDark.classList.toggle('active', !isParchment);
+    btnDark.setAttribute('aria-checked', !isParchment ? 'true' : 'false');
+  }
+
+  // Sync Sidebar & Mobile Drawer Toggles
+  const themeToggle = document.getElementById('themeToggle');
+  const mobileThemeToggle = document.getElementById('mobileThemeToggle');
+  if (themeToggle) themeToggle.checked = isParchment;
+  if (mobileThemeToggle) mobileThemeToggle.checked = isParchment;
+
+  if (persist) {
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, themeName);
+    } catch (e) {
+      // storage unavailable
+    }
+  }
+
+  reRenderActiveCharts();
+}
+
+function toggleTheme() {
+  const currentIsParchment = document.documentElement.getAttribute('data-theme') === 'parchment';
+  const newIsParchment = !currentIsParchment;
+  applyTheme(newIsParchment, true);
+  showToast(`Theme: ${newIsParchment ? 'Parchment Light' : 'Vault Dark'}`);
+}
+
+// ── Search Catalog & Navigation Index ──────────────────────────────────────
+const SEARCH_CATALOG = [
+  // Sections
+  {
+    id: 'hero',
+    title: 'The Overview',
+    category: 'Section',
+    badge: 'Overview',
+    description: 'Executive Quantitative Verdict, Master Stats & 4 Contract Ingot standardizations',
+    keywords: 'overview hero verdict executive stats hurdle ingot 999 basis physical delivery goldm goldten',
+    type: 'section',
+    target: '#hero',
+  },
+  {
+    id: 'balance',
+    title: 'The Assay Balance',
+    category: 'Section',
+    badge: 'Balance',
+    description: 'Interactive pair analyzer, carrying cost subtraction & real-time balance physics beam',
+    keywords: 'balance assay pair leg a leg b target base carry financing residual slider scale beam',
+    type: 'section',
+    target: '#balance',
+  },
+  {
+    id: 'heatmap',
+    title: 'Spread Heatmap',
+    category: 'Section',
+    badge: 'Heatmap',
+    description: 'Multi-pair regime matrix of historical carry-adjusted residuals across trading sessions',
+    keywords: 'heatmap spread regime matrix residuals daily sessions weekly regime colorbar matrix plotly',
+    type: 'section',
+    target: '#heatmap',
+  },
+  {
+    id: 'carry-curve',
+    title: 'Carry & Curve Laboratory',
+    category: 'Section',
+    badge: 'Curve Lab',
+    description: 'Annualized term structure forward curve & roll-down vs curve shift decomposition',
+    keywords: 'carry curve term structure forward annualised roll down curve shift laboratory contango backwardation',
+    type: 'section',
+    target: '#carry-curve',
+  },
+  {
+    id: 'signal-desk',
+    title: 'Signal Desk',
+    category: 'Section',
+    badge: 'Signals',
+    description: 'Z-score relative-value anomaly signals, confidence scores & execution trade cards',
+    keywords: 'signal desk zscore z-score cutoff anomaly trade long short arbitrage confidence execution',
+    type: 'section',
+    target: '#signal-desk',
+  },
+  {
+    id: 'backtest',
+    title: 'Backtest Vault',
+    category: 'Section',
+    badge: 'Backtest',
+    description: 'Out-of-sample strategy performance, cumulative PnL, gross vs net equity, Sharpe & drawdown',
+    keywords: 'backtest vault equity pnl cumulative gross net returns sharpe drawdown alpha costs fees',
+    type: 'section',
+    target: '#backtest',
+  },
+  {
+    id: 'breakeven',
+    title: 'Breakeven Gauge',
+    category: 'Section',
+    badge: 'Frictions',
+    description: 'Institutional friction breakdown: STT, turnover exchange fees, stamp duty & crossing costs',
+    keywords: 'breakeven gauge friction cost hurdle stt exchange turnover stamp duty crossing bid-ask fees threshold',
+    type: 'section',
+    target: '#breakeven',
+  },
+  {
+    id: 'calendar',
+    title: 'Contract Calendar',
+    category: 'Section',
+    badge: 'Calendar',
+    description: 'MCX monthly expiry cycle comparison, cash settlement timeline & 5-day blackout windows',
+    keywords: 'calendar contract expiry cycles delivery blackout tender cash settlement 5th 27th 31st schedule',
+    type: 'section',
+    target: '#calendar',
+  },
+  {
+    id: 'methodology',
+    title: 'Method & Honesty',
+    category: 'Section',
+    badge: 'Methodology',
+    description: 'Rigorous mathematical basis, data validation checks, and why apparent arbitrage disappears',
+    keywords: 'methodology method honesty formulas math assumptions data validation synthetic real audit why arbs fail',
+    type: 'section',
+    target: '#methodology',
+  },
+
+  // Contracts
+  {
+    id: 'contract-goldm',
+    title: 'GOLDM (Gold Mini)',
+    category: 'Contract',
+    badge: '100g 995',
+    description: '100g lot size, 995 fineness benchmark quoted per 10g (multiplier 1.0040 to 999 basis)',
+    keywords: 'goldm gold mini 100g 995 contract liquid primary benchmark',
+    type: 'section',
+    target: '#card-GOLDM',
+  },
+  {
+    id: 'contract-goldten',
+    title: 'GOLDTEN (10 Grams)',
+    category: 'Contract',
+    badge: '10g 999',
+    description: '10g lot size, 999 native standard fineness (multiplier 1.0000)',
+    keywords: 'goldten 10g 999 native standard benchmark contract',
+    type: 'section',
+    target: '#card-GOLDTEN',
+  },
+  {
+    id: 'contract-goldguinea',
+    title: 'GOLDGUINEA (8 Grams)',
+    category: 'Contract',
+    badge: '8g 999',
+    description: '8g coin lot size, 999 fineness quoted per 8g (multiplier 1.2500 to 10g equivalent)',
+    keywords: 'goldguinea guinea 8g 999 coin jewelry standard contract',
+    type: 'section',
+    target: '#card-GOLDGUINEA',
+  },
+  {
+    id: 'contract-goldpetal',
+    title: 'GOLDPETAL (1 Gram)',
+    category: 'Contract',
+    badge: '1g 999',
+    description: '1g micro lot size, 999 fineness quoted per 1g (multiplier 10.0000 to 10g equivalent)',
+    keywords: 'goldpetal petal 1g 999 micro contract retail',
+    type: 'section',
+    target: '#card-GOLDPETAL',
+  },
+
+  // Actions & Tools
+  {
+    id: 'action-tour',
+    title: 'Guided Tour for Judges',
+    category: 'Action',
+    badge: 'Tour',
+    description: 'Interactive step-by-step walkthrough explaining all 8 modules and economic conclusions',
+    keywords: 'tour guided walkthrough judges intro tutorial demo help',
+    type: 'action',
+    action: 'tour',
+  },
+  {
+    id: 'action-copy-summary',
+    title: 'Copy Quantitative Summary',
+    category: 'Action',
+    badge: 'Export',
+    description: 'Copy executive verdict, hurdle thresholds, and key metrics directly to clipboard',
+    keywords: 'copy summary export clipboard text share verdict metrics',
+    type: 'action',
+    action: 'copy-summary',
+  },
+  {
+    id: 'action-theme-toggle',
+    title: 'Toggle Theme (Dark / Light)',
+    category: 'Action',
+    badge: 'Theme',
+    description: 'Switch between Vault Dark Mode and Parchment Light Mode',
+    keywords: 'theme toggle switch light mode dark mode parchment vault color mode appearance',
+    type: 'action',
+    action: 'toggle-theme',
+  },
+  {
+    id: 'action-shortcuts',
+    title: 'Keyboard Shortcuts',
+    category: 'Action',
+    badge: 'Help',
+    description: 'Open quick navigation and keyboard shortcut guide (Press ?)',
+    keywords: 'shortcuts hotkeys keyboard help keys ctrl k question mark',
+    type: 'action',
+    action: 'shortcuts',
+  },
+  {
+    id: 'action-export-heatmap',
+    title: 'Export Heatmap Residuals CSV',
+    category: 'Action',
+    badge: 'CSV',
+    description: 'Download CSV file of all 6 contract pairs carry-adjusted daily residuals',
+    keywords: 'export csv download heatmap data residuals spread numbers',
+    type: 'action',
+    action: 'export-heatmap',
+  },
+  {
+    id: 'action-export-curve',
+    title: 'Export Term Structure CSV',
+    category: 'Action',
+    badge: 'CSV',
+    description: 'Download CSV file of forward curve prices and annualized carry rates',
+    keywords: 'export csv download term structure forward curve data carry',
+    type: 'action',
+    action: 'export-curve',
+  },
+  {
+    id: 'action-export-equity',
+    title: 'Export Backtest Equity CSV',
+    category: 'Action',
+    badge: 'CSV',
+    description: 'Download CSV of strategy gross vs net equity curve time series',
+    keywords: 'export csv download backtest equity pnl returns data',
+    type: 'action',
+    action: 'export-equity',
+  },
+];
+
+// ── Search Component ───────────────────────────────────────────────────────
+let activeSearchResults = [];
+let selectedSearchIndex = -1;
+
+function setupGlobalSearch() {
+  const searchInput = document.getElementById('globalSearchInput');
+  const searchDropdown = document.getElementById('searchDropdown');
+  const searchResultsList = document.getElementById('searchResultsList');
+  const searchDropdownCount = document.getElementById('searchDropdownCount');
+  const searchBoxWrap = document.getElementById('searchBoxWrap');
+  const searchBar = document.getElementById('searchBar');
+
+  if (!searchInput || !searchDropdown || !searchResultsList) return;
+
+  const renderResults = (items) => {
+    activeSearchResults = items;
+    selectedSearchIndex = items.length > 0 ? 0 : -1;
+    searchResultsList.innerHTML = '';
+
+    if (items.length === 0) {
+      searchResultsList.innerHTML = `
+        <div class="search-empty-state">
+          No matches found. Try searching for "Spread", "GOLDM", "Tour", or "Sharpe".
+        </div>
+      `;
+      if (searchDropdownCount) searchDropdownCount.textContent = '0 Results Found';
+      return;
+    }
+
+    if (searchDropdownCount) {
+      searchDropdownCount.textContent = `${items.length} ${items.length === 1 ? 'Result' : 'Results'}`;
+    }
+
+    items.forEach((item, idx) => {
+      const el = document.createElement('div');
+      el.className = `search-result-item ${idx === 0 ? 'selected' : ''}`;
+      el.setAttribute('role', 'option');
+      el.setAttribute('aria-selected', idx === 0 ? 'true' : 'false');
+      el.innerHTML = `
+        <div class="search-result-top">
+          <span class="search-result-title">${escapeHtml(item.title)}</span>
+          <span class="search-result-badge">${escapeHtml(item.badge || item.category)}</span>
+        </div>
+        <div class="search-result-desc">${escapeHtml(item.description)}</div>
+      `;
+
+      el.addEventListener('click', () => {
+        executeSearchItem(item);
+      });
+
+      searchResultsList.appendChild(el);
+    });
+  };
+
+  const filterCatalog = (query) => {
+    const q = (query || '').trim().toLowerCase();
+    if (!q) {
+      return SEARCH_CATALOG.slice(0, 8);
+    }
+
+    const tokens = q.split(/\s+/).filter(Boolean);
+
+    return SEARCH_CATALOG.map(item => {
+      let score = 0;
+      const titleLower = item.title.toLowerCase();
+      const descLower = item.description.toLowerCase();
+      const catLower = item.category.toLowerCase();
+      const kwLower = (item.keywords || '').toLowerCase();
+
+      tokens.forEach(tok => {
+        if (titleLower.startsWith(tok)) score += 60;
+        else if (titleLower.includes(tok)) score += 40;
+
+        if (catLower.includes(tok)) score += 25;
+        if (kwLower.includes(tok)) score += 20;
+        if (descLower.includes(tok)) score += 10;
+      });
+
+      return { item, score };
+    })
+    .filter(res => res.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map(res => res.item);
+  };
+
+  const openSearch = () => {
+    const query = searchInput.value;
+    const items = filterCatalog(query);
+    renderResults(items);
+    searchDropdown.style.display = 'flex';
+    if (searchBar) searchBar.classList.add('active');
+    searchInput.setAttribute('aria-expanded', 'true');
+  };
+
+  const closeSearch = () => {
+    searchDropdown.style.display = 'none';
+    if (searchBar) searchBar.classList.remove('active');
+    searchInput.setAttribute('aria-expanded', 'false');
+  };
+
+  searchInput.addEventListener('input', () => {
+    openSearch();
+  });
+
+  searchInput.addEventListener('focus', () => {
+    openSearch();
+  });
+
+  searchInput.addEventListener('keydown', (e) => {
+    if (searchDropdown.style.display === 'none') {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        openSearch();
+        e.preventDefault();
+        return;
+      }
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (activeSearchResults.length === 0) return;
+      selectedSearchIndex = (selectedSearchIndex + 1) % activeSearchResults.length;
+      updateSelectedSearchItem();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (activeSearchResults.length === 0) return;
+      selectedSearchIndex = (selectedSearchIndex - 1 + activeSearchResults.length) % activeSearchResults.length;
+      updateSelectedSearchItem();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedSearchIndex >= 0 && selectedSearchIndex < activeSearchResults.length) {
+        executeSearchItem(activeSearchResults[selectedSearchIndex]);
+      } else if (activeSearchResults.length > 0) {
+        executeSearchItem(activeSearchResults[0]);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      closeSearch();
+      searchInput.blur();
+    }
+  });
+
+  const updateSelectedSearchItem = () => {
+    const items = searchResultsList.querySelectorAll('.search-result-item');
+    items.forEach((el, idx) => {
+      const isSelected = idx === selectedSearchIndex;
+      el.classList.toggle('selected', isSelected);
+      el.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+      if (isSelected) {
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    });
+  };
+
+  // Close when clicking outside
+  document.addEventListener('click', (e) => {
+    if (searchBoxWrap && !searchBoxWrap.contains(e.target)) {
+      closeSearch();
+    }
+  });
+}
+
+function focusGlobalSearch() {
+  const searchInput = document.getElementById('globalSearchInput');
+  if (searchInput) {
+    searchInput.focus();
+    searchInput.select();
+    const event = new Event('focus');
+    searchInput.dispatchEvent(event);
+  }
+}
+
+function executeSearchItem(item) {
+  const searchDropdown = document.getElementById('searchDropdown');
+  const searchInput = document.getElementById('globalSearchInput');
+  const searchBar = document.getElementById('searchBar');
+
+  if (searchDropdown) searchDropdown.style.display = 'none';
+  if (searchBar) searchBar.classList.remove('active');
+  if (searchInput) {
+    searchInput.blur();
+    searchInput.setAttribute('aria-expanded', 'false');
+  }
+
+  if (item.type === 'section') {
+    const el = document.querySelector(item.target);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.classList.remove('search-highlight-target');
+      void el.offsetWidth; // Trigger reflow
+      el.classList.add('search-highlight-target');
+      setTimeout(() => el.classList.remove('search-highlight-target'), 2400);
+    }
+  } else if (item.type === 'action') {
+    if (item.action === 'tour') {
+      const btnTour = document.getElementById('btnSideTour') || document.getElementById('btnMobileTour');
+      if (btnTour) btnTour.click();
+    } else if (item.action === 'copy-summary') {
+      copyQuantitativeSummary();
+    } else if (item.action === 'toggle-theme') {
+      toggleTheme();
+    } else if (item.action === 'shortcuts') {
+      const modal = document.getElementById('shortcutsModal');
+      if (modal) modal.style.display = 'flex';
+    } else if (item.action === 'export-heatmap') {
+      exportHeatmapCSV();
+    } else if (item.action === 'export-curve') {
+      exportCurveCSV();
+    } else if (item.action === 'export-equity') {
+      exportEquityCSV();
+    }
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>'"]/g, tag => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;'
+  }[tag] || tag));
+}
+
 // ── Theme & Explain Toggles ───────────────────────────────────────────────
 function setupToggles() {
+  // Initialize theme from storage or system preference
+  const initialTheme = getInitialTheme();
+  applyTheme(initialTheme === 'parchment', false);
+
+  // Listen to system preference changes if user hasn't explicitly set theme
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+      if (!localStorage.getItem(THEME_STORAGE_KEY)) {
+        applyTheme(e.matches, false);
+      }
+    });
+  }
+
+  // Header Theme Switcher Pill buttons
+  const btnLight = document.getElementById('themeBtnLight');
+  const btnDark = document.getElementById('themeBtnDark');
+  if (btnLight) {
+    btnLight.addEventListener('click', () => {
+      applyTheme(true, true);
+      showToast('Theme: Parchment Light');
+    });
+  }
+  if (btnDark) {
+    btnDark.addEventListener('click', () => {
+      applyTheme(false, true);
+      showToast('Theme: Vault Dark');
+    });
+  }
+
+  // Sidebar and Mobile Toggles
   const themeToggle = document.getElementById('themeToggle');
   const mobileThemeToggle = document.getElementById('mobileThemeToggle');
   const explainToggle = document.getElementById('explainToggle');
   const mobileExplainToggle = document.getElementById('mobileExplainToggle');
-
-  const applyTheme = (isParchment) => {
-    STATE.isParchment = isParchment;
-    document.documentElement.setAttribute('data-theme', isParchment ? 'parchment' : 'vault');
-    if (themeToggle) themeToggle.checked = isParchment;
-    if (mobileThemeToggle) mobileThemeToggle.checked = isParchment;
-    reRenderActiveCharts();
-  };
 
   const applyExplain = (showExplain) => {
     STATE.explainMode = showExplain;
@@ -181,10 +689,16 @@ function setupToggles() {
   };
 
   if (themeToggle) {
-    themeToggle.addEventListener('change', (e) => applyTheme(e.target.checked));
+    themeToggle.addEventListener('change', (e) => {
+      applyTheme(e.target.checked, true);
+      showToast(`Theme: ${e.target.checked ? 'Parchment Light' : 'Vault Dark'}`);
+    });
   }
   if (mobileThemeToggle) {
-    mobileThemeToggle.addEventListener('change', (e) => applyTheme(e.target.checked));
+    mobileThemeToggle.addEventListener('change', (e) => {
+      applyTheme(e.target.checked, true);
+      showToast(`Theme: ${e.target.checked ? 'Parchment Light' : 'Vault Dark'}`);
+    });
   }
 
   if (explainToggle) {
@@ -1514,9 +2028,25 @@ function setupKeyboardShortcuts() {
   if (backdrop) backdrop.addEventListener('click', () => toggleShortcuts(false));
 
   window.addEventListener('keydown', (e) => {
-    // Ignore key shortcuts if focus is inside an input/select
+    // Global Search Shortcut: Ctrl+K or Cmd+K
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault();
+      focusGlobalSearch();
+      return;
+    }
+
+    // Ignore single-key shortcuts if focus is inside an input/select
     const activeTag = document.activeElement ? document.activeElement.tagName : '';
-    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(activeTag)) return;
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(activeTag)) {
+      if (e.key === 'Escape') {
+        const searchDropdown = document.getElementById('searchDropdown');
+        if (searchDropdown) searchDropdown.style.display = 'none';
+        const searchBar = document.getElementById('searchBar');
+        if (searchBar) searchBar.classList.remove('active');
+        if (document.activeElement) document.activeElement.blur();
+      }
+      return;
+    }
 
     if (e.key === '?' || (e.shiftKey && e.key === '/')) {
       e.preventDefault();
@@ -1524,17 +2054,18 @@ function setupKeyboardShortcuts() {
       toggleShortcuts(!isVisible);
     } else if (e.key === 'Escape') {
       toggleShortcuts(false);
+      const searchDropdown = document.getElementById('searchDropdown');
+      if (searchDropdown) searchDropdown.style.display = 'none';
+      const searchBar = document.getElementById('searchBar');
+      if (searchBar) searchBar.classList.remove('active');
+      const searchInput = document.getElementById('globalSearchInput');
+      if (searchInput) searchInput.blur();
       const tourOverlay = document.getElementById('tourOverlay');
       if (tourOverlay) tourOverlay.style.display = 'none';
       clearTourHighlights();
       document.querySelectorAll('.chart-explain-popover').forEach(p => p.style.display = 'none');
     } else if (e.key === 't' || e.key === 'T') {
-      const themeToggle = document.getElementById('themeToggle');
-      if (themeToggle) {
-        themeToggle.checked = !themeToggle.checked;
-        themeToggle.dispatchEvent(new Event('change'));
-        showToast(`Theme: ${themeToggle.checked ? 'Parchment Light' : 'Vault Dark'}`);
-      }
+      toggleTheme();
     } else if (e.key === 'e' || e.key === 'E') {
       const explainToggle = document.getElementById('explainToggle');
       if (explainToggle) {

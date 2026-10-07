@@ -1,4 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" rx="20" fill="#0E0D0A"/>
-  <text x="50%" y="52%" font-size="55" font-family="serif" font-weight="900" fill="#F7C844" text-anchor="middle" dominant-baseline="central">Au</text>
+  <defs>
+    <linearGradient id="favRim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF2B2" />
+      <stop offset="30%" stop-color="#F5CF63" />
+      <stop offset="70%" stop-color="#C2921E" />
+      <stop offset="100%" stop-color="#6E4804" />
+    </linearGradient>
+    <linearGradient id="favLeft" x1="10%" y1="20%" x2="50%" y2="90%">
+      <stop offset="0%" stop-color="#FFFBE0" />
+      <stop offset="25%" stop-color="#FFE07D" />
+      <stop offset="60%" stop-color="#F0B830" />
+      <stop offset="100%" stop-color="#B8800C" />
+    </linearGradient>
+    <linearGradient id="favRight" x1="50%" y1="30%" x2="90%" y2="90%">
+      <stop offset="0%" stop-color="#E8AD23" />
+      <stop offset="40%" stop-color="#BF820A" />
+      <stop offset="80%" stop-color="#8C5A02" />
+      <stop offset="100%" stop-color="#593600" />
+    </linearGradient>
+    <linearGradient id="favTopBevel" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9" />
+      <stop offset="50%" stop-color="#FFDE7A" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#A36E05" stop-opacity="0.2" />
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="20" fill="#0E0D0A" />
+  <g transform="translate(5, 5) scale(0.9)">
+    <path d="M 12 20 L 32 20 L 50 37 L 68 20 L 88 20 L 50 88 Z"
+          fill="url(#favRim)" stroke="#FFE89E" stroke-width="0.75" stroke-linejoin="round" />
+    <path d="M 16 23 L 33 23 L 50 39 L 50 83 Z" fill="url(#favLeft)" />
+    <path d="M 84 23 L 67 23 L 50 39 L 50 83 Z" fill="url(#favRight)" />
+    <line x1="50" y1="39" x2="50" y2="83" stroke="#FFECA8" stroke-width="1.2" stroke-linecap="round" />
+    <path d="M 12 20 L 32 20 L 50 37" fill="none" stroke="url(#favTopBevel)" stroke-width="1.5" stroke-linecap="round" />
+  </g>
 </svg>
