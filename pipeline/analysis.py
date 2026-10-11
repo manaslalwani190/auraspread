@@ -159,7 +159,9 @@ def carry_adjusted_price(
         def _lookup_carry(row):
             key = (row["Date"], row["BaseExpiry"])
             if key in market_carry:
-                c_val = float(market_carry[key])
+                raw = market_carry[key]
+                # market_carry may have duplicate index entries → squeeze to scalar
+                c_val = float(raw.iloc[0]) if hasattr(raw, "iloc") else float(raw)
                 if 0.0 <= c_val <= 100.0:
                     return c_val
             return np.nan
