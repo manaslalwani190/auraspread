@@ -1,0 +1,4 @@
+Date,Instrument Name,Symbol,Expiry Date,Option Type,Strike Price,Open,High,Low,Close,Previous Close,Volume(Lots),Volume(In 000's),Value(Lacs),Open Interest(Lots)
+"05 Jan 2016","FUTCOM","GOLDM        ","05JAN2016","-","0","25360.00","25486.00","25360.00","25251.00","25423.00","170","17.000 GRMS ","432.18","485"
+"04 Jan 2016","FUTCOM","GOLDM        ","05JAN2016","-","0","25234.00","25505.00","25030.00","25423.00","24943.00","754","75.400 GRMS ","1906.03","814"
+"01 Jan 2016","FUTCOM","GOLDM        ","05JAN2016","-","0","24976.00","25071.00","24900.00","24943.00","24952.00","2117","211.700 GRMS ","5284.18","1066"

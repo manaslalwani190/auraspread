@@ -1,0 +1,3 @@
+Date,Instrument Name,Symbol,Expiry Date,Option Type,Strike Price,Open,High,Low,Close,Previous Close,Volume(Lots),Volume(In 000's),Value(Lacs),Open Interest(Lots)
+18 Dec 2015,FUTCOM,GOLDGUINEA   ,31DEC2015,-,0,19856.00,20095.00,19814.00,20012.00,19860.00,1547,12.376 GRMS ,308.74,1718
+18 Dec 2015,FUTCOM,GOLDPETAL    ,31DEC2015,-,0,2472.00,2494.00,2462.00,2484.00,2465.00,6779,6.779 GRMS ,167.88,12826

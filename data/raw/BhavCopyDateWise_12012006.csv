@@ -1,0 +1,4 @@
+Date,Instrument Name,Symbol,Expiry Date,Option Type,Strike Price,Open,High,Low,Close,Previous Close,Volume(Lots),Volume(In 000's),Value(Lacs),Open Interest(Lots)
+12 Jan 2006,FUTCOM,GOLDM        ,05APR2006,-,0,7900.00,7900.00,7857.00,7875.00,7875.00,12,1.200 GRMS ,9.45,25
+12 Jan 2006,FUTCOM,GOLDM        ,04MAR2006,-,0,7884.00,7895.00,7850.00,7875.00,7899.00,94,9.400 GRMS ,74.03,313
+12 Jan 2006,FUTCOM,GOLDM        ,03FEB2006,-,0,7881.00,7889.00,7838.00,7882.00,7900.00,1017,101.700 GRMS ,800.12,1203

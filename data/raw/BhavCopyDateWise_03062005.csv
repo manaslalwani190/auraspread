@@ -1,0 +1,3 @@
+Date,Instrument Name,Symbol,Expiry Date,Option Type,Strike Price,Open,High,Low,Close,Previous Close,Volume(Lots),Volume(In 000's),Value(Lacs),Open Interest(Lots)
+03 Jun 2005,FUTCOM,GOLDM        ,05AUG2005,-,0,6122.00,6145.00,6105.00,6118.00,6097.00,130,13.000 GRMS ,79.61,334
+03 Jun 2005,FUTCOM,GOLDM        ,05JUL2005,-,0,6102.00,6140.00,6102.00,6129.00,6110.00,51,5.100 GRMS ,31.21,170

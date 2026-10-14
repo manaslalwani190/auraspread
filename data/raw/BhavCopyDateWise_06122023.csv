@@ -1,0 +1,3 @@
+Date,Instrument Name,Symbol,Expiry Date,Option Type,Strike Price,Open,High,Low,Close,Previous Close,Volume(Lots),Volume(In 000's),Value(Lacs),Open Interest(Lots)
+06 Dec 2023,FUTCOM,GOLDGUINEA   ,29DEC2023,-,0,50200.00,50476.00,50026.00,50355.00,50216.00,1442,11.536 GRMS ,725.86,2995
+06 Dec 2023,FUTCOM,GOLDPETAL    ,29DEC2023,-,0,6116.00,6135.00,6108.00,6121.00,6108.00,10373,10.373 GRMS ,634.87,41481

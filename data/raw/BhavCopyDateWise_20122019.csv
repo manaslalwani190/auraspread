@@ -1,0 +1,3 @@
+Date,Instrument Name,Symbol,Expiry Date,Option Type,Strike Price,Open,High,Low,Close,Previous Close,Volume(Lots),Volume(In 000's),Value(Lacs),Open Interest(Lots)
+20 Dec 2019,FUTCOM,GOLDGUINEA   ,31DEC2019,-,0,30500.00,30550.00,30500.00,30535.00,30529.00,269,2.152 GRMS ,82.14,326
+20 Dec 2019,FUTCOM,GOLDPETAL    ,31DEC2019,-,0,3867.00,3870.00,3855.00,3860.00,3869.00,4277,4.277 GRMS ,165.20,4982

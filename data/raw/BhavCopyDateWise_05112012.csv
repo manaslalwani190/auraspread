@@ -1,0 +1,3 @@
+Date,Instrument Name,Symbol,Expiry Date,Option Type,Strike Price,Open,High,Low,Close,Previous Close,Volume(Lots),Volume(In 000's),Value(Lacs),Open Interest(Lots)
+05 Nov 2012,FUTCOM,GOLDM        ,05DEC2012,-,0,30520.00,30934.00,30503.00,30902.00,30511.00,77844,7784.400 GRMS ,239340.26,54181
+05 Nov 2012,FUTCOM,GOLDM        ,05NOV2012,-,0,30382.00,30804.00,30289.00,30530.00,30288.00,1816,181.600 GRMS ,5538.86,1202
