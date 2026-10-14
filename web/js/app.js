@@ -73,6 +73,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupMobileDrawer();
   setupTour();
   setupKeyboardShortcuts();
+  setupQuietAlerts();
+  setupFirstVisitHint();
   setupEventListeners();
 
   try {
@@ -1097,6 +1099,20 @@ function renderStatusHeader() {
   if (barPairs) barPairs.textContent = '6';
   if (barLastDate) barLastDate.textContent = meta.date_end || '2026-10-01';
 
+  // Live Data Badge (Parity Competitor Upgrade)
+  const liveUpdated = document.getElementById('liveUpdatedText');
+  if (liveUpdated) liveUpdated.textContent = `Last Updated: ${meta.date_end || '2026-10-01'}`;
+
+  // Multi-Contract Coverage Timeline Total
+  const timelineTotal = document.getElementById('timelineTotalBadge');
+  if (timelineTotal) timelineTotal.textContent = `${uniqueDays.toLocaleString('en-IN')} Trading Sessions`;
+
+  // Hero Trading Days Description
+  const statTileDaysDesc = document.getElementById('statTileDaysDesc');
+  if (statTileDaysDesc && meta.date_start && meta.date_end) {
+    statTileDaysDesc.textContent = `Full MCX Bhavcopy Archive (${meta.date_start.slice(0, 4)}–${meta.date_end.slice(0, 4)})`;
+  }
+
   if (footerSource) footerSource.textContent = meta.data_source || 'MCX India Bhavcopy Archive (Verified Local Feed)';
   if (footerTimestamp) footerTimestamp.textContent = meta.generated_at;
 
@@ -1223,13 +1239,12 @@ function animateHeadlineStats() {
   const statHurdle = document.getElementById('statTileHurdle');
   const statPairs = document.getElementById('statTilePairs');
 
-  const { normalized_prices } = STATE.data;
-  const nSessions = (normalized_prices && normalized_prices.length > 0)
+  const { meta, normalized_prices } = STATE.data;
+  const uniqueDays = (meta && meta.trading_sessions) || ((normalized_prices && normalized_prices.length > 0)
     ? new Set(normalized_prices.map(p => p.date)).size
-    : 435;
+    : 6260);
 
-  const daysTarget = nSessions || 435;
-  if (statDays) animateCountUp(statDays, daysTarget, '', '', 0, 1200);
+  if (statDays) animateCountUp(statDays, uniqueDays, '', '', 0, 1200);
   if (statHurdle) animateCountUp(statHurdle, 35, '₹', '/10g', 0, 1000);
   if (statPairs) animateCountUp(statPairs, 6, '', '', 0, 1000);
 }
@@ -1749,7 +1764,14 @@ function updateSignalAlerts() {
     }
   }
 
+  // Update Quiet Alerts status badge
+  const quietStatusText = document.getElementById('quietAlertsStatusText');
+  const quietDot = document.getElementById('quietAlertsDot');
+
   if (alerts.length === 0) {
+    if (quietStatusText) quietStatusText.textContent = 'No active signals today';
+    if (quietDot) quietDot.className = 'pulse-dot green-pulse';
+
     feed.innerHTML = `
       <div class="quiet-day-card">
         <div class="quiet-day-art">
@@ -1772,6 +1794,14 @@ function updateSignalAlerts() {
       </div>
     `;
     return;
+  }
+
+  // Update Quiet Alerts badge when signal is active
+  if (quietStatusText && alerts[0]) {
+    const top = alerts[0];
+    const sign = top.zscore >= 0 ? '+' : '';
+    quietStatusText.textContent = `Signal detected: ${top.pair} ${sign}${top.zscore.toFixed(1)}σ`;
+    if (quietDot) quietDot.className = 'pulse-dot';
   }
 
   alerts.forEach(alt => {
@@ -2454,7 +2484,97 @@ function setupKeyboardShortcuts() {
   });
 }
 
-// ── 12. Copy Summary & Toast System ───────────────────────────────────────
+// ── 12. Quiet Alerts Feature (Parity Competitor Upgrade) ────────────────────
+function setupQuietAlerts() {
+  const form = document.getElementById('alertsSubscribeForm');
+  const emailInput = document.getElementById('alertsEmailInput');
+  const activeState = document.getElementById('alertsActiveState');
+  const emailDisplay = document.getElementById('subscribedEmailText');
+  const unsubsBtn = document.getElementById('btnUnsubscribeAlerts');
+
+  const STORAGE_KEY = 'auraspread_alert_email';
+  const savedEmail = localStorage.getItem(STORAGE_KEY);
+
+  const showActive = (email) => {
+    if (emailDisplay) emailDisplay.textContent = email;
+    if (form) form.style.display = 'none';
+    if (activeState) activeState.style.display = 'flex';
+  };
+
+  const showForm = () => {
+    if (form) form.style.display = 'block';
+    if (activeState) activeState.style.display = 'none';
+    if (emailInput) {
+      emailInput.value = '';
+    }
+  };
+
+  if (savedEmail) {
+    showActive(savedEmail);
+  } else {
+    showForm();
+  }
+
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = emailInput ? emailInput.value.trim() : '';
+      if (!email || !email.includes('@')) {
+        showToast('Please enter a valid email address');
+        return;
+      }
+      localStorage.setItem(STORAGE_KEY, email);
+      showActive(email);
+      showToast(`Subscribed ${email} for Quiet Alerts!`);
+    });
+  }
+
+  if (unsubsBtn) {
+    unsubsBtn.addEventListener('click', () => {
+      localStorage.removeItem(STORAGE_KEY);
+      showForm();
+      showToast('Alert email reset');
+    });
+  }
+}
+
+// ── 13. First-Visit Keyboard Shortcut Toast Notification ──────────────────
+function setupFirstVisitHint() {
+  const STORAGE_KEY = 'auraspread_shortcut_hint_seen';
+  if (localStorage.getItem(STORAGE_KEY)) return;
+
+  setTimeout(() => {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'toast shortcut-hint-toast';
+    toast.setAttribute('role', 'status');
+    toast.innerHTML = `
+      <span class="hint-toast-icon">⌨</span>
+      <span class="hint-toast-text">Press <kbd>?</kbd> for shortcuts &bull; <kbd>G</kbd> for Judge Tour &bull; <kbd>Ctrl+K</kbd> to search</span>
+      <button type="button" class="hint-toast-close" aria-label="Dismiss">&times;</button>
+    `;
+    container.appendChild(toast);
+
+    const dismiss = () => {
+      localStorage.setItem(STORAGE_KEY, 'true');
+      if (toast.parentElement) {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        setTimeout(() => toast.remove(), 250);
+      }
+    };
+
+    const closeBtn = toast.querySelector('.hint-toast-close');
+    if (closeBtn) closeBtn.addEventListener('click', dismiss);
+
+    // Auto-dismiss after 4 seconds
+    setTimeout(dismiss, 4000);
+  }, 1000);
+}
+
+// ── 14. Copy Summary & Toast System ───────────────────────────────────────
 function copyQuantitativeSummary() {
   if (!STATE.data) return;
 

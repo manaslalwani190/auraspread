@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AuraSpread - Social Share OG Image Generator (1200x630)</title>
+  <style>
+    body {
+      background: #1A150B;
+      color: #E2DAC5;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      color: #FFBE0B;
+    }
+    .controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    button {
+      background: #FFBE0B;
+      color: #2A2312;
+      border: none;
+      padding: 0.6rem 1.4rem;
+      font-weight: 700;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    button:hover {
+      background: #FFD04D;
+    }
+    canvas {
+      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+      border: 1px solid #55441E;
+      max-width: 90vw;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>AuraSpread 1200&times;630 Social Share Canvas Generator</h1>
+  <div class="controls">
+    <button id="btnRedraw">Redraw Canvas</button>
+    <button id="btnDownload">Download 1200x630 PNG</button>
+    <span style="font-size: 0.85rem; color: #A89D80;">Canvas outputs exact 1200x630 OpenGraph asset</span>
+  </div>
+
+  <canvas id="ogCanvas" width="1200" height="630"></canvas>
+
+  <script>
+    const canvas = document.getElementById('ogCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function drawOG() {
+      // 1. Dark Background #2A2312
+      ctx.fillStyle = '#2A2312';
+      ctx.fillRect(0, 0, 1200, 630);
+
+      // Subtle Grid
+      ctx.strokeStyle = '#332C18';
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= 1200; x += 45) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, 630);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= 630; y += 45) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(1200, y);
+        ctx.stroke();
+      }
+
+      // Frames
+      ctx.strokeStyle = '#55441E';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(20, 20, 1160, 590);
+
+      ctx.strokeStyle = '#FFBE0B';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(28, 28, 1144, 574);
+
+      // Top Tag
+      ctx.fillStyle = '#3D3215';
+      ctx.fillRect(50, 48, 240, 30);
+      ctx.strokeStyle = '#806010';
+      ctx.strokeRect(50, 48, 240, 30);
+
+      ctx.fillStyle = '#FFD04D';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText('MCX GOLD ASSAY OFFICE', 64, 68);
+
+      // Faceted Emblem
+      const ox = 50, oy = 105;
+      ctx.fillStyle = '#FFBE0B';
+      ctx.beginPath();
+      ctx.moveTo(ox + 30, oy);
+      ctx.lineTo(ox + 60, oy);
+      ctx.lineTo(ox + 90, oy + 35);
+      ctx.lineTo(ox + 45, oy + 80);
+      ctx.lineTo(ox, oy + 35);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#FFE89E';
+      ctx.stroke();
+
+      ctx.fillStyle = '#FFE07D';
+      ctx.beginPath();
+      ctx.moveTo(ox + 30, oy);
+      ctx.lineTo(ox + 45, oy + 25);
+      ctx.lineTo(ox + 45, oy + 75);
+      ctx.lineTo(ox + 5, oy + 35);
+      ctx.closePath();
+      ctx.fill();
+
+      // Brand Title
+      ctx.fillStyle = '#FFBE0B';
+      ctx.font = 'bold 50px Georgia, serif';
+      ctx.fillText('AuraSpread', 160, 145);
+
+      ctx.fillStyle = '#E2DAC5';
+      ctx.font = '600 18px -apple-system, sans-serif';
+      ctx.fillText('MCX Gold Relative-Value Monitor & Arbitrage Assay', 162, 175);
+
+      ctx.fillStyle = '#A89D80';
+      ctx.font = '15px -apple-system, sans-serif';
+      ctx.fillText('Decomposing 23 years of MCX bhavcopy spreads into purity basis, financing carry, and real execution frictions.', 162, 200);
+
+      // 4 Stat Cards
+      const cards = [
+        { lbl: 'DATA DEPTH', val: '6,260 SESSIONS', sub: '23-Year Bhavcopy Archive (2004–2026)', col: '#FFBE0B', bg: '#382F19' },
+        { lbl: 'STANDARDIZATION', val: '4 CONTRACTS', sub: 'GOLDM, GOLDTEN, GUINEA, PETAL', col: '#FFE07D', bg: '#382F19' },
+        { lbl: 'MONITORING', val: '6 SPREAD PAIRS', sub: 'Carry-Adjusted & Purity-Normalized', col: '#FFBE0B', bg: '#382F19' },
+        { lbl: 'QUANTITATIVE VERDICT', val: 'EDGE DIES AT COSTS', sub: 'Real frictions absorb 100% of alpha', col: '#E05A3A', bg: '#3D221D' }
+      ];
+
+      const startX = 50, startY = 250, cardW = 260, cardH = 190, gap = 20;
+      cards.forEach((c, i) => {
+        const cx = startX + i * (cardW + gap);
+        ctx.fillStyle = c.bg;
+        ctx.fillRect(cx, startY, cardW, cardH);
+        ctx.strokeStyle = '#66501C';
+        ctx.strokeRect(cx, startY, cardW, cardH);
+
+        // Accent top bar
+        ctx.fillStyle = c.col;
+        ctx.fillRect(cx, startY, cardW, 3);
+
+        ctx.fillStyle = '#A89D80';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillText(c.lbl, cx + 18, startY + 28);
+
+        ctx.fillStyle = c.col;
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(c.val, cx + 18, startY + 68);
+
+        ctx.fillStyle = '#C8BFAC';
+        ctx.font = '13px sans-serif';
+        ctx.fillText(c.sub, cx + 18, startY + 115);
+      });
+
+      // Bottom Banner
+      ctx.fillStyle = '#1F190D';
+      ctx.fillRect(50, 480, 1100, 80);
+      ctx.strokeStyle = '#FFBE0B';
+      ctx.strokeRect(50, 480, 1100, 80);
+
+      ctx.fillStyle = '#FFBE0B';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText('ASSAY CONCLUSION:', 70, 515);
+
+      ctx.fillStyle = '#F5EFEB';
+      ctx.font = '16px sans-serif';
+      ctx.fillText('87.4% of visual spreads are mechanical carry. Gross edge does not survive ₹35/10g exchange costs.', 340, 515);
+
+      ctx.fillStyle = '#A89D80';
+      ctx.font = '12px monospace';
+      ctx.fillText('Honest Null Result • Walk-Forward Out-of-Sample • No Look-Ahead Bias • Zero In-Sample Overfitting', 70, 542);
+
+      // Footers
+      ctx.fillStyle = '#8A7D5A';
+      ctx.font = '13px sans-serif';
+      ctx.fillText('https://manaslalwani190.github.io/auraspread', 50, 595);
+      ctx.fillText('Hack in the Hills \'26 • Commodity Derivatives Intelligence', 800, 595);
+    }
+
+    drawOG();
+    document.getElementById('btnRedraw').addEventListener('click', drawOG);
+    document.getElementById('btnDownload').addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = 'og-image.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+  </script>
+</body>
+</html>
