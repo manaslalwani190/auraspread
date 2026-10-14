@@ -848,25 +848,45 @@ function setupEventListeners() {
   if (csvDecomp) csvDecomp.addEventListener('click', exportDecompCSV);
   if (csvEquity) csvEquity.addEventListener('click', exportEquityCSV);
 
-  // Heatmap Granularity Toggle
-  const btnWeekly = document.getElementById('btnHeatmapWeekly');
-  const btnDaily = document.getElementById('btnHeatmapDaily');
-  if (btnWeekly && btnDaily) {
-    btnWeekly.addEventListener('click', () => {
-      if (STATE.heatmapGranularity === 'weekly') return;
-      STATE.heatmapGranularity = 'weekly';
-      btnWeekly.classList.add('active');
-      btnDaily.classList.remove('active');
-      renderHeatmapChart();
+  // Range Selector Buttons (Stacked Panels Requirement 4)
+  const rangeBtns = document.querySelectorAll('#panelRangeSelector button');
+  rangeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const rng = btn.getAttribute('data-range');
+      if (STATE.stackedRange === rng) return;
+      STATE.stackedRange = rng;
+      rangeBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderStackedPanelCharts();
     });
-    btnDaily.addEventListener('click', () => {
-      if (STATE.heatmapGranularity === 'daily') return;
-      STATE.heatmapGranularity = 'daily';
-      btnDaily.classList.add('active');
-      btnWeekly.classList.remove('active');
-      renderHeatmapChart();
+  });
+
+  // Bottom Filter Highlight Buttons (Stacked Panels Requirement 8)
+  const filterBtns = document.querySelectorAll('#stackedFilterGroup button');
+  const filterDesc = document.getElementById('filterStatusDesc');
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const filterType = btn.getAttribute('data-filter');
+      if (STATE.activeFilter === filterType) {
+        STATE.activeFilter = null;
+        btn.classList.remove('active');
+        if (filterDesc) filterDesc.textContent = 'Click any filter to highlight matching trading regimes across all 6 panels';
+      } else {
+        STATE.activeFilter = filterType;
+        filterBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const labelMap = {
+          below: 'Highlighting regimes where target contract was below friction (< -₹35)',
+          neutral: 'Highlighting equilibrium regimes within friction (±₹15)',
+          above: 'Highlighting regimes where target contract was above friction (> +₹35)',
+        };
+        if (filterDesc) filterDesc.textContent = labelMap[filterType] || '';
+      }
+      if (STATE.stackedCharts && STATE.stackedCharts.length) {
+        STATE.stackedCharts.forEach(c => c && c.draw && c.draw());
+      }
     });
-  }
+  });
 
   // Copy Summary Buttons
   const copyButtons = [
@@ -913,7 +933,7 @@ function setupChartPopovers() {
 // ── Chart Reset Zoom Buttons ──────────────────────────────────────────────
 function setupResetZoomButtons() {
   const resetMap = [
-    { btnId: 'btnResetHeatmapZoom', chartId: 'heatmapChart' },
+    { btnId: 'btnResetHeatmapZoom', chartId: 'stackedPanelsContainer' },
     { btnId: 'btnResetCurveZoom', chartId: 'termStructureChart' },
     { btnId: 'btnResetDecompZoom', chartId: 'decompositionChart' },
     { btnId: 'btnResetEquityZoom', chartId: 'equityCurvesChart' },
@@ -923,6 +943,10 @@ function setupResetZoomButtons() {
     const btn = document.getElementById(btnId);
     if (!btn) return;
     btn.addEventListener('click', () => {
+      if (btnId === 'btnResetHeatmapZoom') {
+        resetStackedPanelsZoom();
+        return;
+      }
       const chartEl = document.getElementById(chartId);
       if (typeof Plotly !== 'undefined' && chartEl && chartEl._fullLayout) {
         Plotly.relayout(chartEl, {
@@ -938,7 +962,7 @@ function setupResetZoomButtons() {
 // ── PNG Download Buttons ──────────────────────────────────────────────────
 function setupPngExportButtons() {
   const pngMap = [
-    { btnId: 'btnPngHeatmap', chartId: 'heatmapChart', filename: 'auraspread_heatmap' },
+    { btnId: 'btnPngHeatmap', chartId: 'stackedPanelsContainer', filename: 'auraspread_stacked_panels' },
     { btnId: 'btnPngCurve', chartId: 'termStructureChart', filename: 'auraspread_term_structure' },
     { btnId: 'btnPngDecomp', chartId: 'decompositionChart', filename: 'auraspread_decomposition' },
     { btnId: 'btnPngEquity', chartId: 'equityCurvesChart', filename: 'auraspread_equity_curve' },
@@ -948,6 +972,10 @@ function setupPngExportButtons() {
     const btn = document.getElementById(btnId);
     if (!btn) return;
     btn.addEventListener('click', async () => {
+      if (btnId === 'btnPngHeatmap') {
+        exportStackedPanelsPNG();
+        return;
+      }
       const chartEl = document.getElementById(chartId);
       if (typeof Plotly === 'undefined' || !chartEl || !chartEl._fullLayout) {
         showToast('Chart not ready for download yet');
@@ -1021,14 +1049,19 @@ function setupLazyCharts() {
 
 function renderSingleChart(chartType) {
   if (!STATE.data) return;
-  if (typeof Plotly === 'undefined') {
+  if (chartType === 'heatmap') {
+    if (typeof Chart === 'undefined') {
+      setTimeout(() => renderSingleChart(chartType), 400);
+      return;
+    }
+  } else if (typeof Plotly === 'undefined') {
     setTimeout(() => renderSingleChart(chartType), 400);
     return;
   }
 
   // Map chartType → DOM container ID for the 3-second fallback
   const chartIdMap = {
-    heatmap: 'heatmapChart',
+    heatmap: 'stackedPanelsContainer',
     termStructure: 'termStructureChart',
     decomposition: 'decompositionChart',
     equityCurves: 'equityCurvesChart',
@@ -1393,189 +1426,594 @@ function updateBalanceScale() {
   }
 }
 
-// ── 3. Spread Heatmap ─────────────────────────────────────────────────────
+// ── 3. Stacked Interactive Panel Charts (6 Pairs - Chart.js) ──────────────
+const STACKED_CANONICAL_PAIRS = [
+  'GOLDM-GOLDTEN',
+  'GOLDM-GOLDGUINEA',
+  'GOLDM-GOLDPETAL',
+  'GOLDTEN-GOLDGUINEA',
+  'GOLDTEN-GOLDPETAL',
+  'GOLDGUINEA-GOLDPETAL',
+];
+
+STATE.stackedCharts = [];
+STATE.stackedRange = '2Y';
+STATE.activeFilter = null;
+STATE.hoveredIndex = null;
+STATE.cachedPanelsData = null;
+
 function renderHeatmapChart() {
-  const chartEl = document.getElementById('heatmapChart');
-  if (!chartEl || !STATE.data || !STATE.data.residuals) return;
+  renderStackedPanelCharts();
+}
 
-  const { residuals } = STATE.data;
-  // Standard logical ordering of contract pairs (wholesale to retail)
-  const canonicalPairs = [
-    'GOLDM-GOLDTEN',
-    'GOLDM-GOLDGUINEA',
-    'GOLDM-GOLDPETAL',
-    'GOLDTEN-GOLDGUINEA',
-    'GOLDTEN-GOLDPETAL',
-    'GOLDGUINEA-GOLDPETAL',
-  ];
-  const availablePairs = Object.keys(residuals);
-  const pairs = canonicalPairs.filter(p => availablePairs.includes(p)).concat(
-    availablePairs.filter(p => !canonicalPairs.includes(p))
-  );
-  if (!pairs.length) return;
+function renderStackedPanelCharts() {
+  const container = document.getElementById('stackedPanelsContainer');
+  if (!container || !STATE.data) return;
 
-  // Build unified sorted date series from the dataset
-  const rawDatesSet = new Set();
-  pairs.forEach(p => {
-    (residuals[p] || []).forEach(d => {
-      if (d && d.date) rawDatesSet.add(d.date);
-    });
-  });
-  const rawDates = Array.from(rawDatesSet).sort();
-  if (!rawDates.length) return;
+  const { heatmap, residuals } = STATE.data;
+  if (!heatmap && !residuals) return;
 
-  const isWeekly = STATE.heatmapGranularity !== 'daily';
+  // Prepare source dates and matrix
+  let allDates = (heatmap && heatmap.dates) ? heatmap.dates : [];
+  let pairs = (heatmap && heatmap.pairs) ? heatmap.pairs : STACKED_CANONICAL_PAIRS;
+  let matrix = (heatmap && heatmap.matrix) ? heatmap.matrix : null;
 
-  let xSeries = [];
-  let zMatrix = [];
-  let hoverTextMatrix = [];
-
-  if (isWeekly) {
-    // ── Time Bucketing: Weekly Median Regime Bins ──
-    // Eliminates dense hairline barcodes by grouping into clean rectangular weekly bins
-    const dateToWeekMap = new Map();
-    const weekSet = new Set();
-    rawDates.forEach(dStr => {
-      const dObj = new Date(dStr + 'T00:00:00Z');
-      const dayOfWeek = dObj.getUTCDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
-      const diffToFriday = (5 - dayOfWeek + 7) % 7;
-      const friObj = new Date(dObj.getTime() + diffToFriday * 86400000);
-      const friStr = friObj.toISOString().slice(0, 10);
-      dateToWeekMap.set(dStr, friStr);
-      weekSet.add(friStr);
-    });
-    xSeries = Array.from(weekSet).sort();
-
-    pairs.forEach(pair => {
-      const weekBucket = new Map();
-      (residuals[pair] || []).forEach(item => {
-        if (!item || item.residual === null || item.residual === undefined) return;
-        const w = dateToWeekMap.get(item.date);
-        if (!w) return;
-        if (!weekBucket.has(w)) weekBucket.set(w, []);
-        weekBucket.get(w).push(item.residual);
-      });
-
-      const rowZ = [];
-      const rowHover = [];
-      xSeries.forEach(wDate => {
-        const vals = weekBucket.get(wDate);
-        if (vals && vals.length > 0) {
-          vals.sort((a, b) => a - b);
-          const mid = Math.floor(vals.length / 2);
-          const medVal = vals.length % 2 !== 0 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
-          const rounded = Math.round(medVal * 100) / 100;
-          rowZ.push(rounded);
-          const regDesc = rounded > 50
-            ? 'Target Leg Rich (Positive Residual)'
-            : (rounded < -50 ? 'Target Leg Cheap (Negative Residual)' : 'Carry Equilibrium (Neutral)');
-          rowHover.push(
-            `<b>${pair}</b><br>` +
-            `Week Ending: ${wDate}<br>` +
-            `Weekly Median Residual: <b>${rounded > 0 ? '+' : ''}${rounded.toFixed(2)} ₹/10g</b><br>` +
-            `Regime: ${regDesc}`
-          );
-        } else {
-          rowZ.push(null);
-          rowHover.push(`<b>${pair}</b><br>Week Ending: ${wDate}<br>No Trading / Unlisted`);
-        }
-      });
-      zMatrix.push(rowZ);
-      hoverTextMatrix.push(rowHover);
-    });
-  } else {
-    // ── Daily Trading Sessions ──
-    xSeries = rawDates;
-    pairs.forEach(pair => {
-      const dateMap = new Map();
-      (residuals[pair] || []).forEach(item => {
-        if (item && item.date) {
-          dateMap.set(item.date, item.residual !== null && item.residual !== undefined ? item.residual : null);
-        }
-      });
-      const rowZ = [];
-      const rowHover = [];
-      xSeries.forEach(dStr => {
-        const val = dateMap.get(dStr);
-        if (val !== undefined && val !== null) {
-          const rounded = Math.round(val * 100) / 100;
-          rowZ.push(rounded);
-          const regDesc = rounded > 50
-            ? 'Target Leg Rich (Positive Residual)'
-            : (rounded < -50 ? 'Target Leg Cheap (Negative Residual)' : 'Carry Equilibrium (Neutral)');
-          rowHover.push(
-            `<b>${pair}</b><br>` +
-            `Date: ${dStr}<br>` +
-            `Carry-Adjusted Residual: <b>${rounded > 0 ? '+' : ''}${rounded.toFixed(2)} ₹/10g</b><br>` +
-            `Regime: ${regDesc}`
-          );
-        } else {
-          rowZ.push(null);
-          rowHover.push(`<b>${pair}</b><br>Date: ${dStr}<br>No Trading / Unlisted`);
-        }
-      });
-      zMatrix.push(rowZ);
-      hoverTextMatrix.push(rowHover);
+  if (!matrix && residuals) {
+    const dateSet = new Set();
+    pairs.forEach(p => (residuals[p] || []).forEach(r => r && r.date && dateSet.add(r.date)));
+    allDates = Array.from(dateSet).sort();
+    matrix = pairs.map(p => {
+      const map = new Map((residuals[p] || []).map(r => [r.date, r.residual]));
+      return allDates.map(d => (map.has(d) ? map.get(d) : null));
     });
   }
 
-  const c = getThemeColors();
+  if (!allDates.length || !matrix) return;
 
-  // Dynamic date range spanning the actual data (not hardcoded)
-  const dateStart = xSeries[0];
-  const dateEnd = xSeries[xSeries.length - 1];
+  // 1. Calculate Aggregate Summary Row & Per-Pair Latest Values (Requirement 6 & 7)
+  let aboveCnt = 0;
+  let belowCnt = 0;
+  let nearCnt = 0;
 
-  const trace = {
-    z: zMatrix,
-    x: xSeries,
-    y: pairs,
-    type: 'heatmap',
-    zmin: -500,
-    zmax: 500,
-    zmid: 0,
-    colorscale: [
-      [0.0, c.copperNeg],
-      [0.45, '#261F12'],
-      [0.5, c.bgPlot],
-      [0.55, '#202A24'],
-      [1.0, c.verdigrisPos],
-    ],
-    colorbar: {
-      title: 'Residual (₹/10g)',
-      titleside: 'top',
-      tickfont: { color: c.textMuted, family: 'JetBrains Mono', size: 10 },
-      titlefont: { color: c.textMain, family: 'Inter', size: 12 },
-      thickness: 16,
-      len: 0.9,
-    },
-    hoverongaps: false,
-    text: hoverTextMatrix,
-    hoverinfo: 'text',
+  for (let c = 0; c < allDates.length; c++) {
+    const validVals = [];
+    for (let r = 0; r < matrix.length; r++) {
+      if (matrix[r][c] !== null && matrix[r][c] !== undefined) {
+        validVals.push(matrix[r][c]);
+      }
+    }
+    if (validVals.length > 0) {
+      if (validVals.some(v => v > 35)) aboveCnt++;
+      if (validVals.some(v => v < -35)) belowCnt++;
+      if (validVals.every(v => Math.abs(v) <= 15)) nearCnt++;
+    }
+  }
+
+  const elAbove = document.getElementById('cntAboveFriction');
+  const elBelow = document.getElementById('cntBelowFriction');
+  const elNear = document.getElementById('cntNearZero');
+  if (elAbove) elAbove.textContent = `${aboveCnt.toLocaleString('en-IN')} days`;
+  if (elBelow) elBelow.textContent = `${belowCnt.toLocaleString('en-IN')} days`;
+  if (elNear) elNear.textContent = `${nearCnt.toLocaleString('en-IN')} days`;
+
+  // Update Headers (Current Value + Sparkline for each pair)
+  pairs.forEach((pairKey, pIdx) => {
+    const row = matrix[pIdx];
+    const nonNull = [];
+    for (let i = 0; i < row.length; i++) {
+      if (row[i] !== null && row[i] !== undefined) {
+        nonNull.push({ date: allDates[i], val: row[i] });
+      }
+    }
+
+    const valEl = document.getElementById(`val-${pairKey}`);
+    if (valEl && nonNull.length) {
+      const latest = nonNull[nonNull.length - 1].val;
+      const sign = latest > 0 ? '+' : '';
+      valEl.textContent = `${sign}₹${Math.round(latest).toLocaleString('en-IN')}`;
+      valEl.className = 'panel-current-val ' + (latest > 35 ? 'pos' : (latest < -35 ? 'neg' : 'neutral'));
+    }
+
+    const sparkEl = document.getElementById(`spark-${pairKey}`);
+    if (sparkEl && nonNull.length) {
+      const last30 = nonNull.slice(-30).map(x => x.val);
+      renderSvgSparkline(sparkEl, last30);
+    }
+  });
+
+  // 2. Date Slicing & Resolution (Requirement 4 & 9)
+  let visibleDates = allDates;
+  let visibleMatrix = matrix;
+
+  const totalPoints = allDates.length;
+  let sliceCount = totalPoints;
+  let isMonthly = false;
+
+  switch (STATE.stackedRange) {
+    case '1Y':
+      sliceCount = Math.min(252, totalPoints);
+      break;
+    case '2Y':
+      sliceCount = Math.min(504, totalPoints);
+      break;
+    case '3Y':
+      sliceCount = Math.min(756, totalPoints);
+      break;
+    case '5Y':
+      sliceCount = Math.min(1260, totalPoints);
+      break;
+    case 'ALL':
+      isMonthly = true;
+      break;
+  }
+
+  if (isMonthly) {
+    const monthMap = new Map();
+    allDates.forEach((dStr, idx) => {
+      const monthKey = dStr.slice(0, 7); // "YYYY-MM"
+      if (!monthMap.has(monthKey)) {
+        monthMap.set(monthKey, { month: monthKey, lastDate: dStr, indices: [] });
+      }
+      monthMap.get(monthKey).indices.push(idx);
+    });
+
+    const mKeys = Array.from(monthMap.keys()).sort();
+    visibleDates = mKeys.map(k => monthMap.get(k).lastDate);
+    visibleMatrix = pairs.map((_, pIdx) => {
+      return mKeys.map(k => {
+        const idxs = monthMap.get(k).indices;
+        const vals = idxs.map(i => matrix[pIdx][i]).filter(v => v !== null && v !== undefined);
+        if (!vals.length) return null;
+        vals.sort((a, b) => a - b);
+        const mid = Math.floor(vals.length / 2);
+        return vals.length % 2 !== 0 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+      });
+    });
+  } else if (sliceCount < totalPoints) {
+    const startIdx = totalPoints - sliceCount;
+    visibleDates = allDates.slice(startIdx);
+    visibleMatrix = matrix.map(row => row.slice(startIdx));
+  }
+
+  STATE.cachedPanelsData = {
+    dates: visibleDates,
+    pairs: pairs,
+    matrix: visibleMatrix,
   };
 
-  const layout = {
-    paper_bgcolor: c.bgPaper,
-    plot_bgcolor: c.bgPlot,
-    font: { color: c.textMain, family: 'Inter' },
-    margin: { t: 25, r: 40, b: 65, l: 165 },
-    xaxis: {
-      type: 'date',
-      range: [dateStart, dateEnd],
-      tickformat: '%b %Y',
-      dtick: 'M2', // Every 2 months: Nov 2025, Jan 2026, Mar 2026, May 2026, Jul 2026, Sep 2026
-      gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 11, color: c.textMuted },
+  // 3. Destroy previous Chart.js instances
+  if (STATE.stackedCharts && STATE.stackedCharts.length) {
+    STATE.stackedCharts.forEach(c => c && c.destroy && c.destroy());
+    STATE.stackedCharts = [];
+  }
+
+  // 4. Custom Overlay and Reference Lines Plugin (Requirement 3 & 8)
+  const stackedReferencePlugin = {
+    id: 'stackedReferencePlugin',
+    beforeDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      if (!chartArea) return;
+      const { left, right, top, bottom, width, height } = chartArea;
+      const yScale = scales.y;
+      const xScale = scales.x;
+
+      ctx.save();
+
+      // Draw Yellow Filter Highlight Bands (Requirement 8)
+      if (STATE.activeFilter && visibleDates && visibleMatrix) {
+        const pairIndex = chart.canvas.dataset.panelIndex ? parseInt(chart.canvas.dataset.panelIndex, 10) : 0;
+        const row = visibleMatrix[pairIndex];
+        if (row) {
+          ctx.fillStyle = 'rgba(255, 190, 11, 0.22)';
+          const n = row.length;
+          const bandWidth = Math.max(1, width / n);
+
+          for (let i = 0; i < n; i++) {
+            const v = row[i];
+            if (v === null || v === undefined) continue;
+            let match = false;
+            if (STATE.activeFilter === 'below' && v < -35) match = true;
+            else if (STATE.activeFilter === 'neutral' && Math.abs(v) <= 15) match = true;
+            else if (STATE.activeFilter === 'above' && v > 35) match = true;
+
+            if (match) {
+              const xPos = xScale.getPixelForValue(i);
+              ctx.fillRect(xPos - bandWidth / 2, top, bandWidth, height);
+            }
+          }
+        }
+      }
+
+      // Draw Zero line (dashed white in dark, dashed charcoal in parchment, y=0)
+      const isParchment = document.documentElement.getAttribute('data-theme') === 'parchment';
+      const yZero = yScale.getPixelForValue(0);
+      if (yZero >= top && yZero <= bottom) {
+        ctx.beginPath();
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = isParchment ? 'rgba(42, 35, 18, 0.45)' : 'rgba(255, 255, 255, 0.35)';
+        ctx.lineWidth = 1;
+        ctx.moveTo(left, yZero);
+        ctx.lineTo(right, yZero);
+        ctx.stroke();
+      }
+
+      // Draw Friction bands (+35 & -35 dashed amber)
+      const yPlus35 = yScale.getPixelForValue(35);
+      const yMinus35 = yScale.getPixelForValue(-35);
+
+      ctx.beginPath();
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = isParchment ? 'rgba(158, 115, 16, 0.55)' : 'rgba(255, 190, 11, 0.45)';
+      ctx.lineWidth = 1;
+
+      if (yPlus35 >= top && yPlus35 <= bottom) {
+        ctx.moveTo(left, yPlus35);
+        ctx.lineTo(right, yPlus35);
+      }
+      if (yMinus35 >= top && yMinus35 <= bottom) {
+        ctx.moveTo(left, yMinus35);
+        ctx.lineTo(right, yMinus35);
+      }
+      ctx.stroke();
+
+      ctx.restore();
     },
-    yaxis: {
-      tickfont: { family: 'JetBrains Mono', size: 12, color: c.accentGold },
-      automargin: true,
-      categoryorder: 'array',
-      categoryarray: pairs.slice().reverse(), // Top-to-bottom matches array order
-    },
+    afterDraw(chart) {
+      // Draw Synchronized Crosshair Vertical Line (Requirement 5)
+      if (STATE.hoveredIndex !== null && STATE.hoveredIndex !== undefined) {
+        const { ctx, chartArea, scales } = chart;
+        if (!chartArea) return;
+        const xScale = scales.x;
+        const xPos = xScale.getPixelForValue(STATE.hoveredIndex);
+        if (xPos >= chartArea.left && xPos <= chartArea.right) {
+          const isParchment = document.documentElement.getAttribute('data-theme') === 'parchment';
+          ctx.save();
+          ctx.beginPath();
+          ctx.setLineDash([4, 4]);
+          ctx.strokeStyle = isParchment ? 'rgba(42, 35, 18, 0.75)' : 'rgba(255, 255, 255, 0.75)';
+          ctx.lineWidth = 1.2;
+          ctx.moveTo(xPos, chartArea.top);
+          ctx.lineTo(xPos, chartArea.bottom);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    }
   };
 
-  Plotly.react('heatmapChart', [trace], layout, { responsive: true, displayModeBar: false });
-  hideChartSkeleton('heatmapChart');
+  // 5. Instantiate Chart.js on all 6 Panels
+  const isMobile = window.innerWidth <= 768;
+
+  pairs.forEach((pairKey, pIdx) => {
+    const canvas = document.getElementById(`chartPanel-${pIdx}`);
+    if (!canvas) return;
+    canvas.dataset.panelIndex = String(pIdx);
+
+    const isBottom = (pIdx === pairs.length - 1);
+    const rowData = visibleMatrix[pIdx];
+
+    const chart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: visibleDates,
+        datasets: [{
+          label: pairKey,
+          data: rowData,
+          borderColor: '#FFBE0B',
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          tension: 0.2,
+          spanGaps: true,
+          fill: {
+            target: 'origin',
+            above: 'rgba(0, 200, 150, 0.28)', // Green translucent above zero
+            below: 'rgba(232, 96, 60, 0.28)', // Red/orange translucent below zero
+          },
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 250 },
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false }, // Handled by shared sync tooltip
+          zoom: {
+            zoom: {
+              drag: {
+                enabled: true,
+                backgroundColor: 'rgba(255, 190, 11, 0.15)',
+                borderColor: '#FFBE0B',
+                borderWidth: 1,
+              },
+              mode: 'x',
+              onZoom: function({ chart: activeChart }) {
+                const { min, max } = activeChart.scales.x;
+                syncZoomAcrossPanels(min, max, activeChart);
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            min: -500,
+            max: 500,
+            grid: {
+              color: 'rgba(255, 255, 255, 0.04)',
+              drawTicks: false,
+            },
+            border: { display: false },
+            ticks: {
+              display: !isMobile,
+              stepSize: 500,
+              callback: function(v) {
+                if (v === -500) return '-500';
+                if (v === 0) return '0';
+                if (v === 500) return '+500';
+                return null;
+              },
+              color: '#C4B896',
+              font: { family: 'JetBrains Mono', size: 9, weight: '600' }
+            },
+            title: {
+              display: (!isMobile && pIdx === 2),
+              text: '₹/10g',
+              color: '#FFBE0B',
+              font: { family: 'JetBrains Mono', size: 10, weight: 'bold' }
+            }
+          },
+          x: {
+            grid: {
+              color: isBottom ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.03)',
+              drawTicks: isBottom,
+            },
+            border: {
+              display: isBottom,
+              color: 'rgba(255, 190, 11, 0.25)',
+            },
+            ticks: {
+              display: isBottom,
+              maxTicksLimit: isMobile ? 6 : 14,
+              maxRotation: 0,
+              autoSkip: true,
+              color: '#C4B896',
+              font: { family: 'JetBrains Mono', size: 10, weight: '500' },
+              callback: function(valIndex) {
+                const dStr = visibleDates[valIndex];
+                if (!dStr) return '';
+                const parts = dStr.split('-');
+                if (parts.length >= 2) {
+                  const mNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                  const mIdx = parseInt(parts[1], 10) - 1;
+                  const yr = parts[0].slice(2);
+                  return `${mNames[mIdx]} ${yr}`;
+                }
+                return dStr;
+              }
+            }
+          }
+        }
+      },
+      plugins: [stackedReferencePlugin],
+    });
+
+    STATE.stackedCharts.push(chart);
+  });
+
+  // 6. Setup Shared Pointer Event Listener for Synchronized Crosshair & Tooltip
+  setupSynchronizedPointerEvents(container);
+
+  hideChartSkeleton('stackedPanelsContainer');
+  STATE.chartsRendered.heatmap = true;
+}
+
+function setupSynchronizedPointerEvents(container) {
+  if (container._syncEventsAttached) return;
+  container._syncEventsAttached = true;
+
+  const tooltipEl = document.getElementById('syncTooltipCard');
+  const dateEl = document.getElementById('syncDateDisplay');
+  const gridEl = document.getElementById('syncTooltipGrid');
+
+  container.addEventListener('pointermove', (e) => {
+    if (!STATE.stackedCharts.length || !STATE.cachedPanelsData) return;
+    const chart0 = STATE.stackedCharts[0];
+    if (!chart0 || !chart0.chartArea) return;
+
+    const rect = chart0.canvas.getBoundingClientRect();
+    const xPos = e.clientX - rect.left;
+
+    if (xPos < chart0.chartArea.left || xPos > chart0.chartArea.right) {
+      if (STATE.hoveredIndex !== null) {
+        STATE.hoveredIndex = null;
+        if (tooltipEl) tooltipEl.style.display = 'none';
+        STATE.stackedCharts.forEach(c => c && c.draw && c.draw());
+      }
+      return;
+    }
+
+    const valIndex = chart0.scales.x.getValueForPixel(xPos);
+    const { dates, pairs, matrix } = STATE.cachedPanelsData;
+    if (valIndex < 0 || valIndex >= dates.length) return;
+
+    STATE.hoveredIndex = valIndex;
+    const curDate = dates[valIndex];
+
+    // Update Floating Tooltip
+    if (tooltipEl && dateEl && gridEl) {
+      dateEl.textContent = curDate;
+      gridEl.innerHTML = pairs.map((p, idx) => {
+        const val = matrix[idx][valIndex];
+        const valStr = (val !== null && val !== undefined)
+          ? `${val > 0 ? '+' : ''}₹${val.toFixed(1)}/10g`
+          : 'No Quote';
+        const cls = (val === null || val === undefined)
+          ? 'nan'
+          : (val > 35 ? 'pos' : (val < -35 ? 'neg' : 'neutral'));
+        return `
+          <div class="sync-pair-row">
+            <span class="pair-label">${p}:</span>
+            <span class="pair-val ${cls}">${valStr}</span>
+          </div>
+        `;
+      }).join('');
+      tooltipEl.style.display = 'block';
+    }
+
+    // Trigger synchronized redraw across all 6 panels
+    STATE.stackedCharts.forEach(c => c && c.draw && c.draw());
+  });
+
+  container.addEventListener('pointerleave', () => {
+    STATE.hoveredIndex = null;
+    if (tooltipEl) tooltipEl.style.display = 'none';
+    if (STATE.stackedCharts) {
+      STATE.stackedCharts.forEach(c => c && c.draw && c.draw());
+    }
+  });
+
+  // Double click resets zoom across all panels
+  container.addEventListener('dblclick', () => {
+    resetStackedPanelsZoom();
+  });
+}
+
+function syncZoomAcrossPanels(min, max, triggeringChart) {
+  if (!STATE.stackedCharts || !STATE.stackedCharts.length) return;
+  STATE.stackedCharts.forEach(c => {
+    if (c && c !== triggeringChart && c.zoomScale) {
+      c.zoomScale('x', { min, max }, 'none');
+    }
+  });
+}
+
+function resetStackedPanelsZoom() {
+  if (STATE.stackedCharts && STATE.stackedCharts.length) {
+    STATE.stackedCharts.forEach(c => {
+      if (c && c.resetZoom) c.resetZoom('none');
+    });
+  }
+  STATE.stackedRange = '2Y';
+  const rangeBtns = document.querySelectorAll('#panelRangeSelector button');
+  rangeBtns.forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-range') === '2Y');
+  });
+  renderStackedPanelCharts();
+  showToast('Zoom reset to default 2Y window');
+}
+
+function renderSvgSparkline(svgEl, dataPoints) {
+  if (!svgEl || !dataPoints || !dataPoints.length) return;
+  const w = 70, h = 18;
+  const minVal = Math.min(...dataPoints);
+  const maxVal = Math.max(...dataPoints);
+  const range = maxVal - minVal || 1;
+
+  const points = dataPoints.map((val, idx) => {
+    const x = 2 + (idx / (dataPoints.length - 1)) * (w - 4);
+    const y = (h - 2) - ((val - minVal) / range) * (h - 4);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+
+  const polylineStr = points.join(' ');
+  const polygonStr = `${points[0].split(',')[0]},${h} ${polylineStr} ${points[points.length - 1].split(',')[0]},${h}`;
+
+  svgEl.innerHTML = `
+    <polygon points="${polygonStr}" fill="rgba(255, 190, 11, 0.12)" />
+    <polyline points="${polylineStr}" fill="none" stroke="#FFBE0B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" />
+  `;
+}
+
+function exportStackedPanelsPNG() {
+  const container = document.getElementById('stackedPanelsContainer');
+  if (!container || !STATE.stackedCharts.length) {
+    showToast('Chart not ready for download yet');
+    return;
+  }
+
+  const exportW = 1200;
+  const panelH = 120;
+  const headerH = 130;
+  const bottomH = 50;
+  const exportH = headerH + (panelH * 6) + bottomH;
+
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = exportW;
+  outCanvas.height = exportH;
+  const ctx = outCanvas.getContext('2d');
+
+  // Dark #1E1A0E background
+  ctx.fillStyle = '#1E1A0E';
+  ctx.fillRect(0, 0, exportW, exportH);
+
+  // Border & frame
+  ctx.strokeStyle = '#55441E';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(10, 10, exportW - 20, exportH - 20);
+
+  // Title header
+  ctx.fillStyle = '#FFBE0B';
+  ctx.font = 'bold 24px Georgia, serif';
+  ctx.fillText('AuraSpread • MCX Gold Relative-Value Residual Panels', 35, 48);
+
+  ctx.fillStyle = '#C4B896';
+  ctx.font = '13px -apple-system, sans-serif';
+  ctx.fillText('Synchronized 6-Pair Carry-Adjusted Residual Trajectories (INR / 10g 999 fineness basis)', 35, 75);
+
+  const sumText = document.getElementById('stackedSummaryStrip')
+    ? document.getElementById('stackedSummaryStrip').innerText.replace(/\s+/g, ' ')
+    : '6 Pairs • 6,260 Sessions';
+  ctx.fillStyle = '#FFD04D';
+  ctx.font = '12px monospace';
+  ctx.fillText(sumText, 35, 102);
+
+  // Draw each of the 6 panels
+  let curY = headerH;
+  STATE.stackedCharts.forEach((c, idx) => {
+    if (!c || !c.canvas) return;
+    const pair = STACKED_CANONICAL_PAIRS[idx] || `Pair ${idx}`;
+    const valEl = document.getElementById(`val-${pair}`);
+    const valStr = valEl ? valEl.textContent : '';
+
+    // Draw pair label
+    ctx.fillStyle = '#FFBE0B';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(pair, 35, curY + 16);
+
+    ctx.fillStyle = valStr.startsWith('+') ? '#34D399' : '#F87171';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(valStr, exportW - 120, curY + 16);
+
+    // Draw canvas
+    try {
+      ctx.drawImage(c.canvas, 30, curY + 20, exportW - 60, panelH - 25);
+    } catch (e) {
+      // ignore
+    }
+
+    curY += panelH;
+  });
+
+  // Footer watermark
+  ctx.fillStyle = '#8A7D5A';
+  ctx.font = '11px sans-serif';
+  ctx.fillText('https://manaslalwani190.github.io/auraspread • Hack in the Hills \'26 Commodity Derivatives Intelligence', 35, exportH - 18);
+
+  outCanvas.toBlob((blob) => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = 'auraspread_stacked_panels.png';
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast('Downloaded auraspread_stacked_panels.png');
+  });
 }
 
 // ── 4. Carry & Curve Lab ──────────────────────────────────────────────────
