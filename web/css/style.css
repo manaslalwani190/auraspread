@@ -4592,4 +4592,408 @@ body.show-explain .explain-tag {
   color: #3D3935 !important;
 }
 
+/* ── 1. Page Load Progress Bar (Requirement 10) ─────────────────────────── */
+.page-load-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 0%;
+  background: #FFBE0B;
+  box-shadow: 0 0 10px rgba(255, 190, 11, 0.6);
+  z-index: 99999;
+  transition: width 0.3s ease, opacity 0.4s ease;
+  pointer-events: none;
+}
+
+/* ── 2. Live Update Badge & Pulse Dot (Requirement 1) ────────────────────── */
+@keyframes pulse {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.5); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background: #00C896;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border: 1px solid #FFBE0B;
+  border-radius: 20px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  color: #F4EFE0;
+  background: rgba(255, 190, 11, 0.08);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+[data-theme="parchment"] .live-badge,
+[data-theme="light"] .live-badge {
+  border-color: #8C6207;
+  color: #1C1917;
+  background: rgba(140, 98, 7, 0.08);
+}
+
+/* ── 3. 4 Headline Stat Tiles (Requirement 2) ───────────────────────────── */
+.headline-stats-grid.four-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 1024px) {
+  .headline-stats-grid.four-tiles {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .headline-stats-grid.four-tiles {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── 4. "Why This Matters" 3-Column Card Row (Requirement 5) ────────────── */
+.why-matters-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.15rem;
+  margin: 1.5rem 0 2rem;
+}
+
+@media (max-width: 768px) {
+  .why-matters-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+.why-card {
+  background: #1E1A0E;
+  border: 1px solid rgba(255, 190, 11, 0.15);
+  border-left: 4px solid #FFBE0B;
+  border-radius: 6px;
+  padding: 1.25rem 1.35rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.why-card:hover {
+  transform: translateY(-2px);
+  border-left-color: #FFD04D;
+  border-color: rgba(255, 190, 11, 0.35);
+  box-shadow: 0 6px 20px rgba(255, 190, 11, 0.12);
+}
+
+.why-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.5rem;
+}
+
+.why-card-icon {
+  font-size: 1.35rem;
+}
+
+.why-card-title {
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: 1.15rem;
+  color: #FFBE0B;
+  margin: 0;
+  font-weight: 700;
+}
+
+.why-card-text {
+  font-size: 0.88rem;
+  color: #C4B896;
+  line-height: 1.55;
+  margin: 0;
+}
+
+[data-theme="parchment"] .why-card,
+[data-theme="light"] .why-card {
+  background: #F7F1E5;
+  border-color: #D6C7AE;
+  border-left-color: #8C6207;
+}
+
+[data-theme="parchment"] .why-card-title,
+[data-theme="light"] .why-card-title {
+  color: #8C6207;
+}
+
+[data-theme="parchment"] .why-card-text,
+[data-theme="light"] .why-card-text {
+  color: #3D3935;
+}
+
+/* ── 5. Data Coverage Timeline (Requirement 4) ──────────────────────────── */
+.data-timeline {
+  background: #1E1A0E;
+  border: 1px solid rgba(255, 190, 11, 0.22);
+  border-radius: 8px;
+  padding: 1.15rem 1.4rem;
+  margin: 1.5rem 0 2rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.data-timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.9rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.timeline-title-gold {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #FFBE0B;
+}
+
+.timeline-subtitle-gold {
+  font-size: 0.8rem;
+  color: #C4B896;
+}
+
+.timeline-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.timeline-bar:last-child {
+  margin-bottom: 0;
+}
+
+.year-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #FFD04D;
+  min-width: 90px;
+}
+
+.contract-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.76rem;
+  color: #C4B896;
+  margin-right: 0.5rem;
+}
+
+.data-timeline .bar {
+  height: 14px;
+  border-radius: 3px;
+  box-shadow: 0 0 8px rgba(255, 190, 11, 0.18);
+}
+
+.data-timeline .bar.goldm {
+  width: 80px;
+  background: linear-gradient(90deg, #9E7310, #FFBE0B);
+}
+
+.data-timeline .bar.goldpetal {
+  width: 80px;
+  background: linear-gradient(90deg, #B38200, #FFD04D);
+}
+
+.data-timeline .bar.goldguinea {
+  width: 80px;
+  background: linear-gradient(90deg, #CC9600, #FFE07D);
+}
+
+.data-timeline .bar.all4 {
+  flex: 1;
+  min-width: 140px;
+  background: linear-gradient(90deg, #9E7310, #FFBE0B, #FFF4CC);
+}
+
+[data-theme="parchment"] .data-timeline,
+[data-theme="light"] .data-timeline {
+  background: #F7F1E5;
+  border-color: #D6C7AE;
+}
+
+[data-theme="parchment"] .timeline-title-gold,
+[data-theme="light"] .timeline-title-gold {
+  color: #8C6207;
+}
+
+[data-theme="parchment"] .year-label,
+[data-theme="light"] .year-label {
+  color: #664900;
+}
+
+/* ── 6. Methodology Comparison Table (Requirement 6) ────────────────────── */
+.methodology-comp-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.methodology-comp-table th {
+  background: #2A2312 !important;
+  color: #FFBE0B !important;
+  font-family: var(--font-mono, monospace) !important;
+  font-weight: 700 !important;
+  padding: 0.9rem 1.25rem !important;
+  border-bottom: 2px solid rgba(255, 190, 11, 0.35) !important;
+}
+
+.methodology-comp-table td {
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #E6DECD;
+}
+
+.methodology-comp-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.methodology-comp-table tbody tr:nth-child(odd) {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.check-green {
+  color: #00C896;
+  font-weight: bold;
+  font-size: 1.05rem;
+  margin-right: 0.4rem;
+}
+
+[data-theme="parchment"] .methodology-comp-table th,
+[data-theme="light"] .methodology-comp-table th {
+  background: #EDE4D3 !important;
+  color: #8C6207 !important;
+  border-bottom-color: #8C6207 !important;
+}
+
+[data-theme="parchment"] .methodology-comp-table td,
+[data-theme="light"] .methodology-comp-table td {
+  color: #1C1917 !important;
+  border-bottom-color: #D6C7AE !important;
+}
+
+[data-theme="parchment"] .methodology-comp-table tbody tr:nth-child(even),
+[data-theme="light"] .methodology-comp-table tbody tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="parchment"] .methodology-comp-table tbody tr:nth-child(odd),
+[data-theme="light"] .methodology-comp-table tbody tr:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* ── 7. Professional Footer (Requirement 7) ─────────────────────────────── */
+.site-footer {
+  margin-top: 4rem;
+  padding: 2.25rem 2.5rem;
+  background: #1E1A0E !important;
+  border-top: 1px solid rgba(255, 190, 11, 0.35) !important;
+  color: #C4B896 !important;
+  font-size: 0.83rem !important;
+  line-height: 1.65 !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 1.5rem !important;
+  border-radius: 6px;
+}
+
+.site-footer .footer-left {
+  text-align: left;
+}
+
+.site-footer .footer-center {
+  text-align: center;
+}
+
+.site-footer .footer-right {
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .site-footer {
+    grid-template-columns: 1fr !important;
+    text-align: center !important;
+    gap: 1rem !important;
+    padding: 1.75rem 1.25rem 5.5rem !important;
+  }
+  .site-footer .footer-left,
+  .site-footer .footer-center,
+  .site-footer .footer-right {
+    text-align: center !important;
+  }
+}
+
+[data-theme="parchment"] .site-footer,
+[data-theme="light"] .site-footer {
+  background: #EDE4D3 !important;
+  border-top-color: #8C6207 !important;
+  color: #3D3935 !important;
+}
+
+/* ── 8. Shortcut Hint Toast (Requirement 8) ─────────────────────────────── */
+.shortcut-hint-toast {
+  background: #1E1A0E !important;
+  border: 1px solid #FFBE0B !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6) !important;
+  color: #F4EFE0 !important;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.15rem;
+  border-radius: 6px;
+}
+
+.shortcut-hint-toast kbd {
+  background: rgba(255, 190, 11, 0.15);
+  border: 1px solid #FFBE0B;
+  color: #FFD04D;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8rem;
+}
+
+/* ── 9. Mobile Left Drawer Fix (Requirement 9) ──────────────────────────── */
+@media (max-width: 768px) {
+  .side-rail {
+    display: none !important;
+  }
+
+  .mobile-drawer {
+    left: 0 !important;
+    right: auto !important;
+    border-left: none !important;
+    border-right: 1px solid rgba(255, 190, 11, 0.3) !important;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .mobile-drawer.active {
+    display: flex !important;
+    transform: translateX(0) !important;
+    animation: none !important;
+  }
+}
+
 

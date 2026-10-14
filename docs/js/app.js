@@ -66,6 +66,9 @@ function getThemeColors() {
 
 // ── Initialization ────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  const loadBar = document.getElementById('pageLoadProgressBar');
+  if (loadBar) loadBar.style.width = '25%';
+
   setupNavigation();
   setupScrollProgress();
   setupToggles();
@@ -78,12 +81,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
 
   try {
+    if (loadBar) loadBar.style.width = '45%';
     const res = await fetch('data/auraspread_data.json');
+    if (loadBar) loadBar.style.width = '70%';
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     STATE.data = await res.json();
+    if (loadBar) loadBar.style.width = '90%';
     renderAll();
     setupLazyCharts();
+
+    if (loadBar) {
+      loadBar.style.width = '100%';
+      setTimeout(() => {
+        loadBar.style.opacity = '0';
+        setTimeout(() => { loadBar.style.display = 'none'; }, 400);
+      }, 300);
+    }
   } catch (err) {
+    if (loadBar) loadBar.style.display = 'none';
     console.error('Failed to load JSON dataset:', err);
     showDataLoadError(err);
   }
@@ -1132,9 +1147,23 @@ function renderStatusHeader() {
   if (barPairs) barPairs.textContent = '6';
   if (barLastDate) barLastDate.textContent = meta.date_end || '2026-10-01';
 
-  // Live Data Badge (Parity Competitor Upgrade)
+  // Live Data Badge (Requirement 1)
   const liveUpdated = document.getElementById('liveUpdatedText');
   if (liveUpdated) liveUpdated.textContent = `Last Updated: ${meta.date_end || '2026-10-01'}`;
+  const heroLiveDate = document.getElementById('heroLiveUpdatedDate');
+  if (heroLiveDate) heroLiveDate.textContent = meta.date_end || '2026-10-01';
+
+  // "Why This Matters" Sessions Count (Requirement 5)
+  const whySessions = document.getElementById('whySessionsCount');
+  if (whySessions) whySessions.textContent = `${uniqueDays.toLocaleString('en-IN')}`;
+
+  // Footer Sessions and Date Range (Requirement 7)
+  const footerSessions = document.getElementById('footerSessionsCount');
+  const footerRange = document.getElementById('footerDateRange');
+  if (footerSessions) footerSessions.textContent = `${uniqueDays.toLocaleString('en-IN')}`;
+  if (footerRange && meta.date_start && meta.date_end) {
+    footerRange.textContent = `${meta.date_start.slice(0, 4)}–${meta.date_end.slice(0, 4)}`;
+  }
 
   // Multi-Contract Coverage Timeline Total
   const timelineTotal = document.getElementById('timelineTotalBadge');
@@ -1269,17 +1298,19 @@ function animateHeadlineStats() {
   if (!STATE.data) return;
 
   const statDays = document.getElementById('statTileDays');
-  const statHurdle = document.getElementById('statTileHurdle');
+  const statYears = document.getElementById('statTileYears');
   const statPairs = document.getElementById('statTilePairs');
+  const statEdge = document.getElementById('statTileEdge');
 
   const { meta, normalized_prices } = STATE.data;
   const uniqueDays = (meta && meta.trading_sessions) || ((normalized_prices && normalized_prices.length > 0)
     ? new Set(normalized_prices.map(p => p.date)).size
-    : 6260);
+    : 690);
 
   if (statDays) animateCountUp(statDays, uniqueDays, '', '', 0, 1200);
-  if (statHurdle) animateCountUp(statHurdle, 35, '₹', '/10g', 0, 1000);
+  if (statYears) animateCountUp(statYears, 3, '', '', 0, 1000);
   if (statPairs) animateCountUp(statPairs, 6, '', '', 0, 1000);
+  if (statEdge) animateCountUp(statEdge, 0, '₹', '', 0, 800);
 }
 
 function renderIngotCards() {
@@ -2989,8 +3020,8 @@ function setupFirstVisitHint() {
     toast.className = 'toast shortcut-hint-toast';
     toast.setAttribute('role', 'status');
     toast.innerHTML = `
-      <span class="hint-toast-icon">⌨</span>
-      <span class="hint-toast-text">Press <kbd>?</kbd> for shortcuts &bull; <kbd>G</kbd> for Judge Tour &bull; <kbd>Ctrl+K</kbd> to search</span>
+      <span class="hint-toast-icon">💡</span>
+      <span class="hint-toast-text">Press <kbd>?</kbd> for shortcuts &bull; <kbd>G</kbd> for Judge Tour</span>
       <button type="button" class="hint-toast-close" aria-label="Dismiss">&times;</button>
     `;
     container.appendChild(toast);
@@ -3007,8 +3038,8 @@ function setupFirstVisitHint() {
     const closeBtn = toast.querySelector('.hint-toast-close');
     if (closeBtn) closeBtn.addEventListener('click', dismiss);
 
-    // Auto-dismiss after 4 seconds
-    setTimeout(dismiss, 4000);
+    // Auto-dismiss after 5 seconds (Requirement 8)
+    setTimeout(dismiss, 5000);
   }, 1000);
 }
 

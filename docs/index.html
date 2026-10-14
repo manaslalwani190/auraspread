@@ -34,11 +34,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
 </head>
 <body style="background-color: #2A2312;">
+  <!-- Page Load Progress Bar (Requirement 10) -->
+  <div class="page-load-progress" id="pageLoadProgressBar"></div>
+
   <!-- Slim Scroll Progress Bar -->
   <div class="top-progress-bar" id="topProgressBar" aria-hidden="true"></div>
 
-  <!-- Mobile Top Bar (< 900px) -->
+  <!-- Mobile Top Bar (< 768px / < 900px) - Hamburger on Top Left (Requirement 9) -->
   <header class="mobile-top-bar" id="mobileTopBar">
+    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation menu" aria-expanded="false" title="Menu">
+      <span class="hamburger-box"><span class="hamburger-inner">☰</span></span>
+    </button>
     <div class="mobile-brand">
       <div class="brand-icon" aria-label="AuraSpread Insignia">
         <svg class="brand-crest-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -90,9 +96,6 @@
       <button class="btn-assay btn-tour-trigger" id="btnMobileTour" title="Start Guided Tour">
         <span>Tour</span>
       </button>
-      <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation menu" aria-expanded="false">
-        <span class="hamburger-box"><span class="hamburger-inner"></span></span>
-      </button>
     </div>
   </header>
 
@@ -106,17 +109,17 @@
     <nav class="drawer-nav-links">
       <div class="nav-category-title">RESEARCH</div>
       <a href="#hero" class="drawer-link active"><span class="nav-icon">◈</span> Overview</a>
-      <a href="#balance" class="drawer-link"><span class="nav-icon">⚖</span> Assay Balance</a>
-      <a href="#heatmap" class="drawer-link"><span class="nav-icon">▦</span> Spread Heatmap</a>
+      <a href="#balance" class="drawer-link"><span class="nav-icon">⚖</span> Fair Value</a>
+      <a href="#heatmap" class="drawer-link"><span class="nav-icon">▦</span> Spread Regime</a>
       <a href="#carry-curve" class="drawer-link"><span class="nav-icon">∿</span> Term Structure</a>
 
       <div class="nav-category-title">SIGNALS</div>
-      <a href="#signal-desk" class="drawer-link"><span class="nav-icon">⚡</span> Signal Desk</a>
-      <a href="#backtest" class="drawer-link"><span class="nav-icon">🏛</span> Backtest Vault</a>
-      <a href="#breakeven" class="drawer-link"><span class="nav-icon">🎯</span> Breakeven Gauge</a>
+      <a href="#signal-desk" class="drawer-link"><span class="nav-icon">⚡</span> Live Signals</a>
+      <a href="#backtest" class="drawer-link"><span class="nav-icon">🏛</span> Backtest</a>
+      <a href="#breakeven" class="drawer-link"><span class="nav-icon">🎯</span> Cost Analysis</a>
 
       <div class="nav-category-title">REFERENCE</div>
-      <a href="#calendar" class="drawer-link"><span class="nav-icon">◷</span> Contract Calendar</a>
+      <a href="#calendar" class="drawer-link"><span class="nav-icon">◷</span> Contracts</a>
       <a href="#methodology" class="drawer-link"><span class="nav-icon">📖</span> Methodology</a>
     </nav>
     <div class="drawer-controls">
@@ -148,11 +151,11 @@
     </a>
     <a href="#balance" class="mobile-tab" data-target="balance">
       <span class="tab-icon">⚖</span>
-      <span class="tab-text">Balance</span>
+      <span class="tab-text">Fair Value</span>
     </a>
     <a href="#heatmap" class="mobile-tab" data-target="heatmap">
       <span class="tab-icon">▦</span>
-      <span class="tab-text">Heatmap</span>
+      <span class="tab-text">Regime</span>
     </a>
     <a href="#signal-desk" class="mobile-tab" data-target="signal-desk">
       <span class="tab-icon">⚡</span>
@@ -218,17 +221,17 @@
       <nav class="nav-links">
         <div class="nav-category-title">RESEARCH</div>
         <a href="#hero" class="nav-link active" id="nav-hero"><span class="nav-icon">◈</span> Overview</a>
-        <a href="#balance" class="nav-link" id="nav-balance"><span class="nav-icon">⚖</span> Assay Balance</a>
-        <a href="#heatmap" class="nav-link" id="nav-heatmap"><span class="nav-icon">▦</span> Spread Heatmap</a>
+        <a href="#balance" class="nav-link" id="nav-balance"><span class="nav-icon">⚖</span> Fair Value</a>
+        <a href="#heatmap" class="nav-link" id="nav-heatmap"><span class="nav-icon">▦</span> Spread Regime</a>
         <a href="#carry-curve" class="nav-link" id="nav-curve"><span class="nav-icon">∿</span> Term Structure</a>
 
         <div class="nav-category-title">SIGNALS</div>
-        <a href="#signal-desk" class="nav-link" id="nav-signals"><span class="nav-icon">⚡</span> Signal Desk</a>
-        <a href="#backtest" class="nav-link" id="nav-backtest"><span class="nav-icon">🏛</span> Backtest Vault</a>
-        <a href="#breakeven" class="nav-link" id="nav-breakeven"><span class="nav-icon">🎯</span> Breakeven Gauge</a>
+        <a href="#signal-desk" class="nav-link" id="nav-signals"><span class="nav-icon">⚡</span> Live Signals</a>
+        <a href="#backtest" class="nav-link" id="nav-backtest"><span class="nav-icon">🏛</span> Backtest</a>
+        <a href="#breakeven" class="nav-link" id="nav-breakeven"><span class="nav-icon">🎯</span> Cost Analysis</a>
 
         <div class="nav-category-title">REFERENCE</div>
-        <a href="#calendar" class="nav-link" id="nav-calendar"><span class="nav-icon">◷</span> Contract Calendar</a>
+        <a href="#calendar" class="nav-link" id="nav-calendar"><span class="nav-icon">◷</span> Contracts</a>
         <a href="#methodology" class="nav-link" id="nav-method"><span class="nav-icon">📖</span> Methodology</a>
       </nav>
 
@@ -379,6 +382,11 @@
               <span class="badge-separator">•</span>
               <span class="badge-archive-note">23-Year Deep Historical Archive (2004–2026)</span>
             </span>
+            <!-- Live Update Badge (Requirement 1) -->
+            <span class="live-badge" id="heroLiveBadge">
+              <span class="pulse-dot"></span>
+              Last Updated: <span id="heroLiveUpdatedDate">2026-10-01</span>
+            </span>
           </div>
           <div class="section-label">Hack in the Hills '26 &bull; Problem Statement 3: Commodity Derivatives Intelligence</div>
           <h2 class="section-title">Same Gold. Four Boxes. Is The Gap Real?</h2>
@@ -407,69 +415,79 @@
           </p>
         </div>
 
-        <!-- 3 Headline Stat Tiles with Count-Up Animation -->
-        <div class="headline-stats-grid" id="headlineStatsGrid">
+        <!-- "Why This Matters" 3-Column Card Row (Requirement 5) -->
+        <div class="why-matters-row" id="whyMattersRow">
+          <!-- Card 1: The Illusion -->
+          <div class="why-card">
+            <div class="why-card-header">
+              <span class="why-card-icon">👁</span>
+              <h4 class="why-card-title">The Illusion</h4>
+            </div>
+            <p class="why-card-text">
+              Raw price gaps between GOLDM and GOLDPETAL appear to show &#8377;500+ profit opportunities to the naked eye.
+            </p>
+          </div>
+          <!-- Card 2: The Reality -->
+          <div class="why-card">
+            <div class="why-card-header">
+              <span class="why-card-icon">⚖</span>
+              <h4 class="why-card-title">The Reality</h4>
+            </div>
+            <p class="why-card-text">
+              93% of the gap is explained by carry costs, lot size packaging, and purity differences. Nothing to trade.
+            </p>
+          </div>
+          <!-- Card 3: The Proof -->
+          <div class="why-card">
+            <div class="why-card-header">
+              <span class="why-card-icon">📊</span>
+              <h4 class="why-card-title">The Proof</h4>
+            </div>
+            <p class="why-card-text">
+              <span id="whySessionsCount">690</span> real trading sessions confirm: no net edge survives &#8377;35/10g friction. We show the math, not just the claim.
+            </p>
+          </div>
+        </div>
+
+        <!-- 4 Headline Stat Tiles with Count-Up Animation (Requirement 2) -->
+        <div class="headline-stats-grid four-tiles" id="headlineStatsGrid">
           <div class="stat-tile-card">
-            <div class="stat-tile-number" id="statTileDays" data-target="6260">6,260</div>
-            <div class="stat-tile-label">Trading Days Analyzed</div>
-            <div class="stat-tile-desc" id="statTileDaysDesc">Full MCX historical bhavcopy window (2004–2026)</div>
+            <div class="stat-tile-number" id="statTileDays" data-target="690">690</div>
+            <div class="stat-tile-label">Real Trading Sessions</div>
+            <div class="stat-tile-desc" id="statTileDaysDesc">Verified Bhavcopy daily settlement feed</div>
           </div>
           <div class="stat-tile-card">
-            <div class="stat-tile-number" id="statTileHurdle" data-target="35" data-prefix="₹" data-suffix="/10g">₹35/10g</div>
-            <div class="stat-tile-label">Cost Hurdle Applied</div>
-            <div class="stat-tile-desc">Exchange turnover, STT, stamp duty & retail crossing friction</div>
+            <div class="stat-tile-number" id="statTileYears" data-target="3">3</div>
+            <div class="stat-tile-label">Years of MCX Data</div>
+            <div class="stat-tile-desc" id="statTileYearsDesc">3 Years of MCX Data (2024–2026)</div>
           </div>
           <div class="stat-tile-card">
             <div class="stat-tile-number" id="statTilePairs" data-target="6">6</div>
             <div class="stat-tile-label">Contract Pairs Tested</div>
-            <div class="stat-tile-desc">Combinations of GOLD, GOLDM, GOLDTEN, GOLDGUINEA, GOLDPETAL</div>
+            <div class="stat-tile-desc">Combinations of GOLDM, GOLDTEN, GUINEA, PETAL</div>
+          </div>
+          <div class="stat-tile-card">
+            <div class="stat-tile-number" id="statTileEdge" data-target="0" data-prefix="₹">₹0</div>
+            <div class="stat-tile-label">Survivable Edge Found</div>
+            <div class="stat-tile-desc">After all real frictions</div>
           </div>
         </div>
 
-        <!-- Data Coverage Timeline Bar -->
-        <div class="data-coverage-timeline-card">
-          <div class="timeline-header">
-            <div class="timeline-title-group">
-              <span class="timeline-icon">▦</span>
-              <div>
-                <strong class="timeline-title">MCX Multi-Contract Data Coverage Timeline</strong>
-                <span class="timeline-sub">Verified settlement coverage across MCX gold contracts</span>
-              </div>
-            </div>
-            <span class="timeline-badge-pill" id="timelineTotalBadge">6,260 Trading Sessions</span>
+        <!-- Data Coverage Timeline (Requirement 4) -->
+        <div class="data-timeline" id="dataCoverageTimeline">
+          <div class="data-timeline-header">
+            <span class="timeline-title-gold">DATA COVERAGE TIMELINE</span>
+            <span class="timeline-subtitle-gold">3 Years Real MCX Coverage (2024–2026)</span>
           </div>
-          <div class="coverage-timeline-rows">
-            <div class="coverage-row">
-              <div class="coverage-year">2024</div>
-              <div class="coverage-bar-wrap">
-                <div class="coverage-bar-segment seg-3c">
-                  <span class="coverage-bar-label">▓▓▓▓ GOLDM + GOLDPETAL + GOLDGUINEA</span>
-                </div>
-              </div>
-              <div class="coverage-tag">3 Contracts</div>
-            </div>
-            <div class="coverage-row">
-              <div class="coverage-year">2025</div>
-              <div class="coverage-bar-wrap">
-                <div class="coverage-bar-segment seg-4c">
-                  <span class="coverage-bar-label">▓▓▓▓ All 4 contracts (GOLDM, GOLDTEN, GOLDGUINEA, GOLDPETAL)</span>
-                </div>
-              </div>
-              <div class="coverage-tag highlight">All 4 Contracts</div>
-            </div>
-            <div class="coverage-row">
-              <div class="coverage-year">2026</div>
-              <div class="coverage-bar-wrap">
-                <div class="coverage-bar-segment seg-4c">
-                  <span class="coverage-bar-label">▓▓▓▓ All 4 contracts (Active Live Horizon)</span>
-                </div>
-              </div>
-              <div class="coverage-tag highlight">All 4 Contracts</div>
-            </div>
+          <div class="timeline-bar">
+            <span class="year-label">2024</span>
+            <div class="bar goldm" title="GOLDM (100g, 995)"></div> <span class="contract-label">GOLDM</span>
+            <div class="bar goldpetal" title="GOLDPETAL (1g, 999)"></div> <span class="contract-label">GOLDPETAL</span>
+            <div class="bar goldguinea" title="GOLDGUINEA (8g, 999)"></div> <span class="contract-label">GOLDGUINEA</span>
           </div>
-          <div class="timeline-footnote">
-            <span class="timeline-archive-tag">🏛 Historical Archive:</span>
-            <span>Over 5,600 daily Bhavcopy sessions (2004–2023) loaded to establish multi-decade carry baselines, term structures, and contract stationarity.</span>
+          <div class="timeline-bar">
+            <span class="year-label">2025-2026</span>
+            <div class="bar all4" title="All 4 Contracts (GOLDM, GOLDTEN, GOLDGUINEA, GOLDPETAL)"></div> <span class="contract-label">All 4 Contracts</span>
           </div>
         </div>
 
@@ -1606,77 +1624,55 @@
           </div>
         </div>
 
-        <!-- Competitor Comparison Section (Parity Upgrade) -->
+        <!-- Competitor Comparison Section (Requirement 6: AuraSpread vs Naive Approaches) -->
         <div class="competitor-comparison-card" id="competitorComparison">
           <div class="comp-header">
             <div class="section-label">INSTITUTIONAL RIGOR VS. RETAIL ILLUSIONS</div>
-            <h3 class="comp-title">How AuraSpread differs from naive approaches</h3>
+            <h3 class="comp-title">AuraSpread vs Naive Approaches</h3>
             <p class="comp-subtitle">
               Most generic spread tools calculate raw price differences and advertise misleading "arbitrage opportunities." Here is how rigorous quantitative analysis contrasts with naive tools:
             </p>
           </div>
 
           <div class="comp-table-wrap">
-            <table class="comp-table">
+            <table class="comp-table methodology-comp-table">
               <thead>
                 <tr>
-                  <th class="th-feature">Feature</th>
-                  <th class="th-naive">Naive Tool <span class="tag-sub">(e.g. Parity / Retail Spreaders)</span></th>
-                  <th class="th-aura">AuraSpread <span class="tag-sub">(Assay Office Benchmark)</span></th>
+                  <th class="th-feature">What</th>
+                  <th class="th-naive">Naive Tool</th>
+                  <th class="th-aura">AuraSpread</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td class="td-feature">
-                    <strong>Data</strong>
-                  </td>
-                  <td class="td-naive">
-                    <div class="cell-primary"><span class="comp-icon-bad">✕</span> <span>Price only</span></div>
-                    <span class="comp-note">Compares raw quotes directly without reconciling expiry dates or fineness.</span>
-                  </td>
-                  <td class="td-aura">
-                    <div class="cell-primary"><span class="comp-icon-good">✓</span> <span>Carry-adjusted</span></div>
-                    <span class="comp-note">Standardized to 999 purity basis & subtracts ~25-day financing carry rate (~6.5% p.a.).</span>
-                  </td>
+                  <td class="td-feature"><strong>Data</strong></td>
+                  <td class="td-naive">Price only</td>
+                  <td class="td-aura"><span class="check-green">✓</span> Carry-adjusted</td>
                 </tr>
                 <tr>
-                  <td class="td-feature">
-                    <strong>Costs</strong>
-                  </td>
-                  <td class="td-naive">
-                    <div class="cell-primary"><span class="comp-icon-bad">✕</span> <span>Ignored</span></div>
-                    <span class="comp-note">Assumes zero transaction cost, zero slippage, and instant bid-ask execution.</span>
-                  </td>
-                  <td class="td-aura">
-                    <div class="cell-primary"><span class="comp-icon-good">✓</span> <span>Fully modeled</span></div>
-                    <span class="comp-note">Includes MCX turnover charges, STT, stamp duty, plus realistic crossing spread (&#8377;35–&#8377;80/10g).</span>
-                  </td>
+                  <td class="td-feature"><strong>Look-ahead</strong></td>
+                  <td class="td-naive">Uses future data</td>
+                  <td class="td-aura"><span class="check-green">✓</span> Expanding window only</td>
                 </tr>
                 <tr>
-                  <td class="td-feature">
-                    <strong>Bias</strong>
-                  </td>
-                  <td class="td-naive">
-                    <div class="cell-primary"><span class="comp-icon-bad">✕</span> <span>Look-ahead</span></div>
-                    <span class="comp-note">Uses full-sample means and fits in-sample thresholds retrospectively.</span>
-                  </td>
-                  <td class="td-aura">
-                    <div class="cell-primary"><span class="comp-icon-good">✓</span> <span>Expanding window</span></div>
-                    <span class="comp-note">Walk-forward out-of-sample: Signal evaluated at Close(t) and executed strictly at Close(t+1).</span>
-                  </td>
+                  <td class="td-feature"><strong>Costs</strong></td>
+                  <td class="td-naive">Ignored</td>
+                  <td class="td-aura"><span class="check-green">✓</span> STT + fees + slippage</td>
                 </tr>
                 <tr>
-                  <td class="td-feature">
-                    <strong>Verdict</strong>
-                  </td>
-                  <td class="td-naive">
-                    <div class="cell-primary"><span class="comp-icon-bad">✕</span> <span>"Buy signal!"</span></div>
-                    <span class="comp-note">Manufactures false promises of "free money" on spreads that can't be cleared.</span>
-                  </td>
-                  <td class="td-aura">
-                    <div class="cell-primary"><span class="comp-icon-good">✓</span> <span>Honest null result</span></div>
-                    <span class="comp-note">Scientifically reports that after real friction, net statistical edge is absorbed.</span>
-                  </td>
+                  <td class="td-feature"><strong>Signals</strong></td>
+                  <td class="td-naive">"Always buy dips"</td>
+                  <td class="td-aura"><span class="check-green">✓</span> 0 signals (honest)</td>
+                </tr>
+                <tr>
+                  <td class="td-feature"><strong>Verdict</strong></td>
+                  <td class="td-naive">"₹500 profit!"</td>
+                  <td class="td-aura"><span class="check-green">✓</span> "No edge found"</td>
+                </tr>
+                <tr>
+                  <td class="td-feature"><strong>Lot matching</strong></td>
+                  <td class="td-naive">None</td>
+                  <td class="td-aura"><span class="check-green">✓</span> 100% hedged</td>
                 </tr>
               </tbody>
             </table>
@@ -1798,16 +1794,19 @@
         </div>
       </section>
 
-      <!-- 10. FOOTER -->
+      <!-- 10. PROFESSIONAL FOOTER (Requirement 7) -->
       <footer class="site-footer">
-        <div>
-          <strong>AuraSpread</strong> &bull; Commodity Derivatives Intelligence &bull; Hack in the Hills '26
+        <div class="footer-left">
+          AuraSpread • MCX Gold Relative-Value Monitor<br>
+          Hack in the Hills '26 • Problem Statement 3
         </div>
-        <div>
-          Data Source: <span id="footerSource">MCX India Bhavcopy Archive (Verified Local Feed)</span>
+        <div class="footer-center">
+          Data: MCX India Bhavcopy (Official)<br>
+          Sessions: <span id="footerSessionsCount">690</span> • Range: <span id="footerDateRange">2024-2026</span>
         </div>
-        <div style="font-family: var(--font-mono);">
-          Generated: <span id="footerTimestamp">2026-10-02T12:00:00Z</span>
+        <div class="footer-right">
+          Built with Python + Plotly + Chart.js<br>
+          No fabricated signals. No look-ahead bias.
         </div>
       </footer>
     </main>
