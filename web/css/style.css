@@ -786,12 +786,13 @@ input:checked + .slider:before {
   width: 380px;
   max-width: calc(100vw - 32px);
   max-height: 440px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-gold);
+  /* BUG3 FIX: always render on a dark surface for maximum contrast */
+  background: #1A1508 !important;
+  border: 1px solid #FFBE0B !important;
   border-radius: var(--radius-chamfer);
-  box-shadow: var(--shadow-vault), 0 15px 40px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255,190,11,0.25);
   overflow: hidden;
-  z-index: 250;
+  z-index: 99999 !important;
   display: flex;
   flex-direction: column;
   backdrop-filter: blur(16px);
@@ -808,22 +809,23 @@ input:checked + .slider:before {
   justify-content: space-between;
   align-items: center;
   padding: 0.6rem 0.85rem;
-  border-bottom: 1px solid var(--border-bronze);
+  border-bottom: 1px solid rgba(255,190,11,0.2) !important;
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--text-muted);
+  /* BUG3 FIX: always readable on dark dropdown bg */
+  color: #8A7D5A !important;
   font-family: var(--font-mono);
-  background: var(--bg-secondary);
+  background: #0E0D0A !important;
 }
 
 .search-esc-hint kbd {
   font-size: 0.66rem;
   padding: 0.1rem 0.3rem;
   border-radius: 3px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-bronze);
-  color: var(--text-secondary);
+  background: #332C18 !important;
+  border: 1px solid rgba(255,190,11,0.25) !important;
+  color: #C4B896 !important;
 }
 
 .search-results-list {
@@ -844,13 +846,14 @@ input:checked + .slider:before {
   transition: all 0.15s ease;
   border-left: 3px solid transparent;
   text-decoration: none;
-  color: inherit;
+  /* BUG3 FIX: pin text color so it is always readable on dark dropdown */
+  color: #F4EFE0 !important;
 }
 
 .search-result-item:hover,
 .search-result-item.selected {
-  background: var(--bg-card-hover);
-  border-left-color: var(--accent-gold);
+  background: rgba(255, 190, 11, 0.12) !important;
+  border-left-color: #FFBE0B !important;
 }
 
 .search-result-top {
@@ -863,7 +866,8 @@ input:checked + .slider:before {
 .search-result-title {
   font-weight: 600;
   font-size: 0.85rem;
-  color: var(--accent-gold-bright);
+  /* BUG3 FIX: bright gold title on dark bg */
+  color: #FFD04D !important;
   font-family: var(--font-sans);
 }
 
@@ -871,17 +875,19 @@ input:checked + .slider:before {
   font-size: 0.65rem;
   font-family: var(--font-mono);
   text-transform: uppercase;
-  padding: 0.1rem 0.4rem;
+  padding: 0.15rem 0.5rem;
   border-radius: 3px;
-  background: rgba(255, 190, 11, 0.12);
-  color: var(--gold);
-  border: 1px solid var(--border);
-  font-weight: 600;
+  /* BUG3 FIX: solid gold pill — max contrast */
+  background: #FFBE0B !important;
+  color: #0E0D0A !important;
+  border: none !important;
+  font-weight: 700;
 }
 
 .search-result-desc {
   font-size: 0.73rem;
-  color: var(--text-muted);
+  /* BUG3 FIX: warm muted but still readable */
+  color: #A89870 !important;
   line-height: 1.35;
 }
 
@@ -890,26 +896,38 @@ input:checked + .slider:before {
   justify-content: space-between;
   align-items: center;
   padding: 0.45rem 0.85rem;
-  border-top: 1px solid var(--border-bronze);
+  border-top: 1px solid rgba(255,190,11,0.15) !important;
   font-size: 0.68rem;
-  color: var(--text-muted);
+  color: #8A7D5A !important;
   font-family: var(--font-mono);
-  background: var(--bg-secondary);
+  background: #0E0D0A !important;
 }
 
 .search-dropdown-footer kbd {
   padding: 0.05rem 0.25rem;
   font-size: 0.65rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border-bronze);
+  background: #332C18 !important;
+  border: 1px solid rgba(255,190,11,0.25) !important;
   border-radius: 2px;
+  color: #C4B896 !important;
 }
 
 .search-empty-state {
   padding: 1.5rem 1rem;
   text-align: center;
-  color: var(--text-muted);
+  color: #8A7D5A !important;
   font-size: 0.82rem;
+}
+
+.search-results-list {
+  overflow-y: auto;
+  max-height: 330px;
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  padding: 0.35rem 0;
+  /* BUG3 FIX: ensure list bg inherits the dark dropdown bg */
+  background: #1A1508;
 }
 
 /* ── Top-Right Header Theme Toggle Pill ─────────────────────────────────── */
@@ -1495,9 +1513,10 @@ body.show-explain .explain-tag {
   border: 1px solid var(--border-bronze);
   border-radius: var(--radius-chamfer);
   padding: 2.25rem;
-  padding-bottom: 3rem;
+  /* BUG1 FIX: extra bottom padding so pan-plates never touch the card border */
+  padding-bottom: 5rem;
   margin-bottom: 4rem;
-  min-height: 200px;
+  min-height: 320px;
   box-shadow: var(--shadow-vault);
 }
 
@@ -1543,11 +1562,12 @@ body.show-explain .explain-tag {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 2.5rem 1rem 5.5rem;
-  padding-bottom: 6.5rem;
+  padding: 2.5rem 1rem 6.5rem;
   position: relative;
-  min-height: 250px;
-  margin-bottom: 1rem;
+  /* BUG1 FIX: enough height for arm + pan, overflow:visible so pans are never clipped */
+  min-height: 320px;
+  overflow: visible;
+  margin-bottom: 2.5rem;
 }
 
 .scale-fulcrum {
@@ -2952,6 +2972,16 @@ body.show-explain .explain-tag {
 
   .scale-pan {
     width: 110px;
+  }
+
+  /* BUG1 FIX: taller beam section on mobile so pans never clip */
+  .scale-card {
+    min-height: 400px;
+    padding-bottom: 6rem;
+  }
+  .scale-visual-wrap {
+    min-height: 380px;
+    padding-bottom: 7.5rem;
   }
 
   /* Hide Range / Contracts / Pairs chips on mobile; keep Sessions + Latest */
@@ -5192,4 +5222,164 @@ body.show-explain .explain-tag {
   }
 }
 
+
+/* ════════════════════════════════════════════════════════════════════
+   BUG2 FIX — Parchment / Light Mode: comprehensive text contrast pass
+   All selectors use [data-theme="parchment"] to match existing theme key.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Navigation text ────────────────────────────────────────────────── */
+[data-theme="parchment"] .nav-item,
+[data-theme="parchment"] .nav-link,
+[data-theme="parchment"] .sidebar a,
+[data-theme="parchment"] .side-rail a {
+  color: #1A1508 !important;
+}
+[data-theme="parchment"] .nav-link:hover,
+[data-theme="parchment"] .nav-link.active {
+  color: #6B4C0A !important;
+}
+
+/* ── Section headings ───────────────────────────────────────────────── */
+[data-theme="parchment"] h1,
+[data-theme="parchment"] h2,
+[data-theme="parchment"] h3,
+[data-theme="parchment"] h4,
+[data-theme="parchment"] .section-title,
+[data-theme="parchment"] .section-subtitle,
+[data-theme="parchment"] .section-label {
+  color: #1A1508 !important;
+}
+
+/* ── Body / generic text ────────────────────────────────────────────── */
+[data-theme="parchment"] p,
+[data-theme="parchment"] span:not(.splash-au):not(.splash-brand):not(.nav-icon),
+[data-theme="parchment"] li,
+[data-theme="parchment"] label {
+  color: #2A2312 !important;
+}
+
+/* ── Card, panel, stat tiles ────────────────────────────────────────── */
+[data-theme="parchment"] .card,
+[data-theme="parchment"] .panel,
+[data-theme="parchment"] .stat-tile,
+[data-theme="parchment"] .stat-tile-card,
+[data-theme="parchment"] .method-card,
+[data-theme="parchment"] .key-insight-card,
+[data-theme="parchment"] .why-card {
+  color: #1A1508 !important;
+}
+
+/* ── Muted / secondary text ─────────────────────────────────────────── */
+[data-theme="parchment"] .text-muted,
+[data-theme="parchment"] .muted,
+[data-theme="parchment"] .subtitle,
+[data-theme="parchment"] .caption,
+[data-theme="parchment"] .metric-box-sub,
+[data-theme="parchment"] .pan-title,
+[data-theme="parchment"] .select-control label {
+  color: #5A4A2A !important;
+}
+
+/* ── Gold accents — use a darker olive-gold to pass contrast on cream ── */
+[data-theme="parchment"] .gold,
+[data-theme="parchment"] .accent,
+[data-theme="parchment"] .highlight,
+[data-theme="parchment"] .stat-value,
+[data-theme="parchment"] .metric-value,
+[data-theme="parchment"] .metric-box-val,
+[data-theme="parchment"] .pan-price {
+  color: #7A5A08 !important;
+}
+
+/* ── Sidebar ────────────────────────────────────────────────────────── */
+[data-theme="parchment"] .side-rail {
+  background: #EDE8DC !important;
+  border-right-color: rgba(42,35,18,0.18) !important;
+}
+
+/* ── Main background ────────────────────────────────────────────────── */
+[data-theme="parchment"] body,
+[data-theme="parchment"] main,
+[data-theme="parchment"] .main-content {
+  background: #F5F0E8 !important;
+  color: #1A1508 !important;
+}
+
+/* ── Header / top bar / status bar ─────────────────────────────────── */
+[data-theme="parchment"] .mobile-top-bar,
+[data-theme="parchment"] .status-bar,
+[data-theme="parchment"] .top-header-bar {
+  background: #E8E0CF !important;
+  border-bottom-color: rgba(42,35,18,0.18) !important;
+  color: #1A1508 !important;
+}
+
+/* ── Select / input / textarea ──────────────────────────────────────── */
+[data-theme="parchment"] select,
+[data-theme="parchment"] input:not([type="checkbox"]):not([type="radio"]),
+[data-theme="parchment"] textarea {
+  background: #FFFFFF !important;
+  color: #1A1508 !important;
+  border-color: #8B6914 !important;
+}
+
+/* ── Secondary buttons ──────────────────────────────────────────────── */
+[data-theme="parchment"] .btn-secondary,
+[data-theme="parchment"] .btn-assay:not(.active) {
+  background: #EDE8DC !important;
+  color: #1A1508 !important;
+  border-color: #8B6914 !important;
+}
+
+/* ── Note / warning / explain boxes ─────────────────────────────────── */
+[data-theme="parchment"] .explain-tag,
+[data-theme="parchment"] .note-box,
+[data-theme="parchment"] .warning-box,
+[data-theme="parchment"] .balance-takeaway-banner,
+[data-theme="parchment"] .balance-friction-label {
+  background: #FFF8E8 !important;
+  color: #2A2312 !important;
+  border-left-color: #8B6914 !important;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────── */
+[data-theme="parchment"] table,
+[data-theme="parchment"] td,
+[data-theme="parchment"] th {
+  color: #1A1508 !important;
+  border-color: rgba(42,35,18,0.15) !important;
+}
+[data-theme="parchment"] tr:nth-child(even) td {
+  background: rgba(42,35,18,0.05) !important;
+}
+
+/* ── Search input in parchment mode ─────────────────────────────────── */
+[data-theme="parchment"] .search-bar-input,
+[data-theme="parchment"] #search-input {
+  background: #FFFFFF !important;
+  color: #1A1508 !important;
+  border-color: #8B6914 !important;
+}
+[data-theme="parchment"] .search-bar-input::placeholder {
+  color: #8A7060 !important;
+}
+
+/* ── Chart card backgrounds in light mode ───────────────────────────── */
+[data-theme="parchment"] .chart-card,
+[data-theme="parchment"] .scale-card,
+[data-theme="parchment"] .hero-verdict-card,
+[data-theme="parchment"] .table-card {
+  color: #1A1508 !important;
+}
+
+/* ── Summary metric boxes on balance beam ───────────────────────────── */
+[data-theme="parchment"] .summary-metric-box {
+  color: #1A1508 !important;
+}
+[data-theme="parchment"] .metric-box-label {
+  color: #5A4A2A !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════ */
 
