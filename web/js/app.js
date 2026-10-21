@@ -5,6 +5,260 @@
  * interactive scale physics, sticky sliders, guided tour, and export utilities.
  */
 
+/* ══════════════════════════════════════════════════════════════════════
+   SPLASH SCREEN — "Price Ticker Reveal" Animation
+   Runs immediately before anything else; checks sessionStorage so it
+   only plays once per browser session.
+   ══════════════════════════════════════════════════════════════════════ */
+(function initSplash() {
+  'use strict';
+
+  const SESSION_KEY = 'auraspread_splash_shown';
+  const splash = document.getElementById('splash-screen');
+  if (!splash) return;
+
+  // Skip entire animation if already seen this session
+  if (sessionStorage.getItem(SESSION_KEY)) {
+    splash.remove();
+    return;
+  }
+  sessionStorage.setItem(SESSION_KEY, '1');
+
+  /* ── Helpers ────────────────────────────────────────────────────────── */
+  const $ = (id) => document.getElementById(id);
+  const rand = (min, max) => Math.random() * (max - min) + min;
+  const randInt = (min, max) => Math.floor(rand(min, max + 1));
+
+  // Inject the flash overlay element
+  const flashEl = document.createElement('div');
+  flashEl.id = 'splash-flash';
+  splash.appendChild(flashEl);
+
+  /* ── Gold price pool (realistic MCX-style numbers) ──────────────────── */
+  const PRICE_POOL = [
+    '₹72,450', '₹72,610', '₹72,580', '₹72,740', '₹72,820',
+    '₹72,495', '₹72,660', '₹72,530', '₹72,390', '₹72,875',
+    '₹73,010', '₹72,920', '₹72,350', '₹72,715', '₹73,120',
+    '₹72,475', '₹72,640', '₹72,780', '₹72,560', '₹72,680',
+    '5,847',   '5,854',   '5,841',   '5,860',   '5,836',
+    '+12',     '-8',      '+24',     '-15',      '+5',
+    '₹72,502', '₹72,618', '₹72,737', '₹72,444', '₹72,895',
+  ];
+
+  /* ── Phase 1 & 2: Ticker chaos ──────────────────────────────────────── */
+  const tickerEl = $('ticker-numbers');
+  const NUM_PARTICLES = window.innerWidth < 600 ? 28 : 52;
+  const particles = [];
+
+  // Create particle nodes
+  for (let i = 0; i < NUM_PARTICLES; i++) {
+    const el = document.createElement('span');
+    el.className = 'ticker-num';
+    el.style.left = rand(0, 96) + '%';
+    el.style.top  = rand(0, 96) + '%';
+    el.style.opacity = rand(0.35, 0.85);
+    el.style.fontSize = randInt(11, 16) + 'px';
+    el.textContent = PRICE_POOL[randInt(0, PRICE_POOL.length - 1)];
+    tickerEl.appendChild(el);
+    particles.push({
+      el,
+      x: rand(0, window.innerWidth),
+      y: rand(0, window.innerHeight),
+      vx: rand(-2.5, 2.5),
+      vy: rand(-2.5, 2.5),
+      updateTick: randInt(0, 8),
+    });
+  }
+
+  let phase = 1;           // 1 = chaos, 2 = slowdown, 3 = frozen
+  let frameCount = 0;
+  let rafId = null;
+  let skipped = false;
+
+  // Phase timing (in animation frames @ ~60fps)
+  const PHASE1_END = 60;   // 1.0 s
+  const PHASE2_END = 90;   // 1.5 s
+  const PHASE3_FLASH = 95; // start flash at ~1.58s
+
+  function animateTickers() {
+    frameCount++;
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+
+    if (phase === 1) {
+      // Rapid random repositioning + text shuffle
+      particles.forEach((p, i) => {
+        // Move
+        p.x += p.vx;
+        p.y += p.vy;
+        // Wrap around edges
+        if (p.x < -60)  p.x = W + 40;
+        if (p.x > W + 60) p.x = -40;
+        if (p.y < -20)  p.y = H + 10;
+        if (p.y > H + 20) p.y = -10;
+        // Shuffle text 20× per second
+        p.updateTick--;
+        if (p.updateTick <= 0) {
+          p.el.textContent = PRICE_POOL[randInt(0, PRICE_POOL.length - 1)];
+          p.updateTick = randInt(2, 5);
+          // Flicker opacity
+          p.el.style.opacity = rand(0.25, 0.9);
+        }
+        p.el.style.left = p.x + 'px';
+        p.el.style.top  = p.y + 'px';
+        p.el.style.transform = '';
+      });
+
+      if (frameCount >= PHASE1_END) {
+        phase = 2;
+      }
+
+    } else if (phase === 2) {
+      // Slow down — ease velocities toward 0, drift toward center
+      const cx = W / 2, cy = H / 2;
+      const t = (frameCount - PHASE1_END) / (PHASE2_END - PHASE1_END); // 0→1
+      const decel = 1 - t * 0.92;
+      particles.forEach((p) => {
+        // Drift toward centre
+        const dx = cx - p.x, dy = cy - p.y;
+        p.vx = p.vx * decel + dx * 0.008 * t;
+        p.vy = p.vy * decel + dy * 0.008 * t;
+        p.x += p.vx;
+        p.y += p.vy;
+        // Slow text shuffle
+        p.updateTick--;
+        if (p.updateTick <= 0) {
+          p.el.textContent = PRICE_POOL[randInt(0, PRICE_POOL.length - 1)];
+          p.updateTick = randInt(6, 14);
+        }
+        // Converge colors toward uniform gold
+        p.el.style.opacity = 0.6 + t * 0.2;
+        p.el.style.left = p.x + 'px';
+        p.el.style.top  = p.y + 'px';
+      });
+
+      if (frameCount >= PHASE2_END) {
+        phase = 3;
+      }
+
+    } else if (phase === 3) {
+      // Frozen — do nothing (particles stay put)
+      // Flash handled below after RAF is cancelled
+    }
+
+    rafId = requestAnimationFrame(animateTickers);
+  }
+
+  rafId = requestAnimationFrame(animateTickers);
+
+  /* ── Phase 3: Flash + hide particles ────────────────────────────────── */
+  setTimeout(() => {
+    if (skipped) return;
+    // Stop RAF loop
+    cancelAnimationFrame(rafId);
+
+    // Camera flash
+    flashEl.classList.add('on');
+    setTimeout(() => {
+      flashEl.classList.remove('on');
+      flashEl.classList.add('off');
+      // Hide all ticker particles
+      tickerEl.style.opacity = '0';
+      tickerEl.style.transition = 'opacity 0.15s ease';
+
+      // ── Phase 4: Text reveal ─────────────────────────────────────────
+      startTextReveal();
+    }, 120);
+  }, 1520);  // ~1.52 s
+
+  /* ── Phase 4: Text reveal ────────────────────────────────────────────── */
+  function startTextReveal() {
+    if (skipped) return;
+
+    // "SAME GOLD. FOUR PRICES." slides in from left
+    const line1 = $('splash-line1');
+    if (line1) {
+      requestAnimationFrame(() => line1.classList.add('reveal'));
+    }
+
+    // After 380ms, typewriter for tagline
+    setTimeout(() => {
+      if (skipped) return;
+      typeTagline('IS THE GAP REAL?', () => {
+        // ── Phase 5: Logo appear ───────────────────────────────────────
+        setTimeout(showLogo, 180);
+      });
+    }, 380);
+  }
+
+  /* ── Typewriter helper ───────────────────────────────────────────────── */
+  function typeTagline(text, onDone) {
+    const textEl = $('tagline-text');
+    const cursorEl = $('tagline-cursor');
+    if (!textEl || !cursorEl) { onDone && onDone(); return; }
+
+    // Show cursor first
+    cursorEl.style.opacity = '1';
+
+    let i = 0;
+    const interval = setInterval(() => {
+      if (skipped) { clearInterval(interval); return; }
+      if (i < text.length) {
+        textEl.textContent += text[i++];
+      } else {
+        clearInterval(interval);
+        onDone && onDone();
+      }
+    }, 52); // ~19 chars/s — snappy but readable
+  }
+
+  /* ── Phase 5: Logo appear ─────────────────────────────────────────────── */
+  function showLogo() {
+    if (skipped) return;
+
+    const auEl    = document.querySelector('.splash-au');
+    const brandEl = document.querySelector('.splash-brand');
+    const subEl   = $('splash-sub');
+
+    if (auEl)    requestAnimationFrame(() => auEl.classList.add('reveal'));
+    if (brandEl) requestAnimationFrame(() => brandEl.classList.add('reveal'));
+    if (subEl)   requestAnimationFrame(() => subEl.classList.add('reveal'));
+
+    // ── Phase 6: Exit slide-up ─────────────────────────────────────────
+    setTimeout(doExit, 720);
+  }
+
+  /* ── Phase 6: Exit ───────────────────────────────────────────────────── */
+  function doExit() {
+    if (skipped) return;
+    triggerExit();
+  }
+
+  function triggerExit() {
+    skipped = true;
+    cancelAnimationFrame(rafId);
+    // Remove listeners
+    document.removeEventListener('keydown', onSkip);
+    document.removeEventListener('click',   onSkip);
+
+    splash.classList.add('splash-exit');
+    setTimeout(() => splash.remove(), 600);
+  }
+
+  /* ── Skip handlers ─────────────────────────────────────────────────────── */
+  function onSkip() {
+    if (skipped) return;
+    triggerExit();
+  }
+
+  document.addEventListener('keydown', onSkip);
+  document.addEventListener('click',   onSkip);
+
+  // Hard failsafe: always remove after 5 s
+  setTimeout(() => { if (!skipped) triggerExit(); }, 5000);
+
+})(); // ← IIFE ends here; everything above runs immediately on script parse
+
 // Application State
 const STATE = {
   data: null,

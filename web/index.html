@@ -20,6 +20,10 @@
   <meta name="twitter:description" content="Does the price gap between MCX gold contracts survive real trading costs? 690 sessions, 6 pairs, honest quantitative answer.">
   <meta name="twitter:image" content="assets/og-image.png">
 
+  <!-- Preconnect for Google Fonts (faster splash font load) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
   <!-- SVG Favicon (Gold Geometric Insignia) -->
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="shortcut icon" href="favicon.ico">
@@ -34,6 +38,33 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
 </head>
 <body style="background-color: #2A2312;">
+
+  <!-- ════════════════════════════════════════════════════════════
+       SPLASH SCREEN — Price Ticker Reveal Animation
+       Plays once per browser session, then self-destructs.
+       ════════════════════════════════════════════════════════════ -->
+  <div id="splash-screen" role="presentation" aria-hidden="true">
+    <!-- Particle field of flying ticker numbers -->
+    <div id="ticker-container">
+      <div id="ticker-numbers"></div>
+    </div>
+
+    <!-- Central text reveal -->
+    <div id="splash-text">
+      <div id="splash-line1">SAME GOLD. FOUR PRICES.</div>
+      <div id="splash-line2"></div>
+      <div id="splash-tagline"><span id="tagline-text"></span><span id="tagline-cursor" class="cursor-blink">|</span></div>
+      <div id="splash-logo">
+        <span class="splash-au">Au</span>
+        <span class="splash-brand">AuraSpread</span>
+      </div>
+      <div id="splash-sub">MCX ASSAY OFFICE</div>
+    </div>
+
+    <!-- Skip hint -->
+    <div id="splash-skip">Press any key or click to skip →</div>
+  </div>
+
   <!-- Page Load Progress Bar (Requirement 10) -->
   <div class="page-load-progress" id="pageLoadProgressBar"></div>
 
