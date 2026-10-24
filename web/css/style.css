@@ -347,7 +347,6 @@ body {
 [data-theme="parchment"] .ingot-card,
 [data-theme="parchment"] .guide-steps-card,
 [data-theme="parchment"] .data-quality-card,
-[data-theme="parchment"] .search-dropdown,
 [data-theme="light"] .chart-card,
 [data-theme="light"] .stat-tile-card,
 [data-theme="light"] .hero-verdict-card,
@@ -358,8 +357,7 @@ body {
 [data-theme="light"] .metric-card,
 [data-theme="light"] .ingot-card,
 [data-theme="light"] .guide-steps-card,
-[data-theme="light"] .data-quality-card,
-[data-theme="light"] .search-dropdown {
+[data-theme="light"] .data-quality-card {
   background-color: #FAF6F0 !important;
   border-color: rgba(158, 115, 16, 0.3) !important;
 }
@@ -780,19 +778,20 @@ input:checked + .slider:before {
 
 /* ── Search Dropdown Results Panel ──────────────────────────────────────── */
 .search-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: 380px;
-  max-width: calc(100vw - 32px);
-  max-height: 440px;
-  /* BUG3 FIX: always render on a dark surface for maximum contrast */
+  /* BUG2 FIX: use fixed positioning so the panel always floats above everything */
+  position: fixed;
+  top: 72px;
+  right: 24px;
+  width: 420px;
+  max-width: calc(100vw - 48px);
+  max-height: 70vh;
+  /* Always render on dark surface for maximum contrast, regardless of theme */
   background: #1A1508 !important;
-  border: 1px solid #FFBE0B !important;
+  border: 2px solid #FFBE0B !important;
   border-radius: var(--radius-chamfer);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255,190,11,0.25);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.90), 0 0 0 1px rgba(255,190,11,0.25);
   overflow: hidden;
-  z-index: 99999 !important;
+  z-index: 999999 !important;
   display: flex;
   flex-direction: column;
   backdrop-filter: blur(16px);
@@ -5383,3 +5382,231 @@ body.show-explain .explain-tag {
 
 /* ════════════════════════════════════════════════════════════════════ */
 
+/* ══════════════════════════════════════════════════════════════════════
+   BUG 1 FIX — Light / Parchment Mode: Bolder & Darker Text
+   ══════════════════════════════════════════════════════════════════════ */
+
+[data-theme="light"] p,
+[data-theme="parchment"] p {
+  color: #1A1508 !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="light"] .section-desc,
+[data-theme="light"] .section-intro,
+[data-theme="light"] .beginner-note,
+[data-theme="light"] .note-text,
+[data-theme="parchment"] .section-desc,
+[data-theme="parchment"] .section-intro,
+[data-theme="parchment"] .beginner-note,
+[data-theme="parchment"] .note-text {
+  color: #1A1508 !important;
+  font-weight: 600 !important;
+}
+
+/* All span text — exclude decorative accent/badge spans and search UI spans */
+[data-theme="light"] span:not(.gold):not(.accent):not(.badge):not(.search-result-badge):not(.search-result-title):not(.search-result-desc),
+[data-theme="parchment"] span:not(.gold):not(.accent):not(.badge):not(.search-result-badge):not(.search-result-title):not(.search-result-desc) {
+  color: #2A2312 !important;
+  font-weight: 500 !important;
+}
+
+[data-theme="light"] .stat-label,
+[data-theme="light"] .metric-label,
+[data-theme="parchment"] .stat-label,
+[data-theme="parchment"] .metric-label {
+  color: #3A2E18 !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="light"] .stat-value,
+[data-theme="light"] .metric-value,
+[data-theme="parchment"] .stat-value,
+[data-theme="parchment"] .metric-value {
+  color: #8B6914 !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="light"] .nav-item,
+[data-theme="light"] .sidebar a,
+[data-theme="light"] .nav-link,
+[data-theme="light"] .menu-item,
+[data-theme="parchment"] .nav-item,
+[data-theme="parchment"] .sidebar a,
+[data-theme="parchment"] .nav-link,
+[data-theme="parchment"] .menu-item {
+  color: #1A1508 !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="light"] .section-category,
+[data-theme="light"] .section-tag,
+[data-theme="light"] .eyebrow-text,
+[data-theme="parchment"] .section-category,
+[data-theme="parchment"] .section-tag,
+[data-theme="parchment"] .eyebrow-text {
+  color: #8B6914 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em !important;
+}
+
+[data-theme="light"] li,
+[data-theme="light"] td,
+[data-theme="light"] th,
+[data-theme="light"] label,
+[data-theme="parchment"] li,
+[data-theme="parchment"] td,
+[data-theme="parchment"] th,
+[data-theme="parchment"] label {
+  color: #2A2312 !important;
+  font-weight: 500 !important;
+}
+
+[data-theme="light"] th,
+[data-theme="parchment"] th {
+  font-weight: 700 !important;
+  background: rgba(42,35,18,0.1) !important;
+}
+
+[data-theme="light"] .warning-box *,
+[data-theme="light"] .note-box *,
+[data-theme="light"] .beginner-note *,
+[data-theme="parchment"] .warning-box *,
+[data-theme="parchment"] .note-box *,
+[data-theme="parchment"] .beginner-note * {
+  color: #2A2312 !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="light"] .key-insight,
+[data-theme="light"] .insight-text,
+[data-theme="light"] .quantitative-insight,
+[data-theme="parchment"] .key-insight,
+[data-theme="parchment"] .insight-text,
+[data-theme="parchment"] .quantitative-insight {
+  color: #1A1508 !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="light"] .muted,
+[data-theme="light"] .text-muted,
+[data-theme="light"] .subtitle,
+[data-theme="light"] .caption,
+[data-theme="parchment"] .muted,
+[data-theme="parchment"] .text-muted,
+[data-theme="parchment"] .subtitle,
+[data-theme="parchment"] .caption {
+  color: #5A4A2A !important;
+  font-weight: 500 !important;
+}
+
+[data-theme="light"] a:not(.nav-item):not(.btn):not(.search-result-item),
+[data-theme="parchment"] a:not(.nav-item):not(.btn):not(.search-result-item) {
+  color: #8B6914 !important;
+  font-weight: 600 !important;
+  text-decoration: underline !important;
+}
+
+[data-theme="light"] table *,
+[data-theme="light"] tr *,
+[data-theme="parchment"] table *,
+[data-theme="parchment"] tr * {
+  color: #1A1508 !important;
+  font-weight: 500 !important;
+}
+
+[data-theme="light"] select option,
+[data-theme="parchment"] select option {
+  color: #1A1508 !important;
+  background: #F5F0E8 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   BUG 2 FIX — Search Dropdown: Always Dark + Proper Stacking
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Search overlay backdrop — dims the page behind the open panel */
+#search-overlay,
+.search-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0,0,0,0.55) !important;
+  z-index: 999998 !important;
+  display: none !important;
+  pointer-events: none !important;
+}
+
+#search-overlay.active,
+.search-overlay.active {
+  display: block !important;
+  pointer-events: auto !important;
+}
+
+/* Force the search dropdown dark regardless of active theme */
+[data-theme="light"] .search-dropdown,
+[data-theme="parchment"] .search-dropdown {
+  background: #1A1508 !important;
+  border: 2px solid #FFBE0B !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,190,11,0.25) !important;
+  z-index: 999999 !important;
+}
+
+[data-theme="light"] .search-dropdown-header,
+[data-theme="parchment"] .search-dropdown-header {
+  background: #0E0D0A !important;
+  color: #8A7D5A !important;
+  border-bottom-color: rgba(255,190,11,0.2) !important;
+}
+
+[data-theme="light"] .search-results-list,
+[data-theme="parchment"] .search-results-list {
+  background: #1A1508 !important;
+}
+
+[data-theme="light"] .search-result-item,
+[data-theme="parchment"] .search-result-item {
+  color: #F4EFE0 !important;
+}
+
+[data-theme="light"] .search-result-title,
+[data-theme="parchment"] .search-result-title {
+  color: #FFD04D !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="light"] .search-result-badge,
+[data-theme="parchment"] .search-result-badge {
+  background: #FFBE0B !important;
+  color: #0E0D0A !important;
+}
+
+[data-theme="light"] .search-result-desc,
+[data-theme="parchment"] .search-result-desc {
+  color: #A89870 !important;
+}
+
+[data-theme="light"] .search-dropdown-footer,
+[data-theme="parchment"] .search-dropdown-footer {
+  background: #0E0D0A !important;
+  color: #8A7D5A !important;
+  border-top-color: rgba(255,190,11,0.15) !important;
+}
+
+[data-theme="light"] .search-dropdown-footer kbd,
+[data-theme="light"] .search-esc-hint kbd,
+[data-theme="parchment"] .search-dropdown-footer kbd,
+[data-theme="parchment"] .search-esc-hint kbd {
+  background: #332C18 !important;
+  color: #C4B896 !important;
+  border-color: rgba(255,190,11,0.25) !important;
+}
+
+[data-theme="light"] .search-empty-state,
+[data-theme="parchment"] .search-empty-state {
+  color: #8A7D5A !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════ */
