@@ -1,12 +1,17 @@
 {
   "meta": {
+    "date_range": "2004-01-01 to 2026-10-01",
+    "sessions": 6260,
+    "contracts": 4,
+    "pairs": 6,
+    "generated": "2026-10-24T20:52:30.792846",
+    "data_source": "MCX Bhavcopy Local Archive (2004-2026)",
     "is_synthetic": false,
-    "data_source": "MCX India Bhavcopy (Local Raw CSV Archive)",
     "date_start": "2004-01-01",
     "date_end": "2026-10-01",
     "trading_sessions": 6260,
     "total_records": 48422,
-    "generated_at": "2026-10-14T12:00:59.034186Z",
+    "generated_at": "2026-10-24T15:22:30.771822Z",
     "norm_target": "INR per 10g (999 Purity Gold)",
     "contracts_tracked": [
       "GOLDM",

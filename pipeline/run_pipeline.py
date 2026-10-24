@@ -268,8 +268,13 @@ def run() -> None:
     actual_sessions = int(raw_df["Date"].nunique()) if not raw_df.empty and "Date" in raw_df.columns else 0
 
     meta = {
+        "date_range": f"{actual_start} to {actual_end}",
+        "sessions": actual_sessions,
+        "contracts": 4,
+        "pairs": 6,
+        "generated": datetime.now().isoformat(),
+        "data_source": "MCX Bhavcopy Local Archive (2004-2026)",
         "is_synthetic": is_synthetic,
-        "data_source": data_source_msg,
         "date_start": actual_start,
         "date_end": actual_end,
         "trading_sessions": actual_sessions,
