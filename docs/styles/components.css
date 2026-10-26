@@ -104,7 +104,7 @@ kbd {
 .hero-verdict-card {
   border-color: var(--line-strong) !important;
   box-shadow: 0 0 0 1px var(--line-strong),
-              0 0 40px rgba(245,184,0,0.12),
+              0 0 40px rgba(227, 255, 145, 0.12),
               0 10px 30px rgba(0,0,0,0.35) !important;
 }
 
@@ -112,47 +112,64 @@ kbd {
 .card--pos { border-left: 3px solid var(--pos) !important; }
 .card--neg { border-left: 3px solid var(--neg) !important; }
 
+
 /* ══════════════════════════════════════════════════════════════════
-   UNIFIED BUTTON
+   BUTTONS (Primary: Lime with dark text | Secondary: Forest Green)
    ══════════════════════════════════════════════════════════════════ */
-.btn-assay {
+.btn-assay,
+.btn.sec {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-8);
   font-family: var(--font-body);
   font-weight: 500;
-  font-size: var(--fs-small);  /* 14px */
+  font-size: var(--fs-small);
   padding: var(--space-8) var(--space-16);
   border-radius: var(--radius-btn);
-  border: 1px solid var(--line-strong);
-  background: linear-gradient(180deg, var(--card-hi), var(--card));
-  color: var(--mute);
+  border: 1px solid var(--line);
+  background: var(--forest);
+  color: var(--white-soft);
   cursor: pointer;
-  min-height: 40px;    /* 44px tap target on mobile is enforced by @media */
-  transition: all 0.2s ease;
+  min-height: 40px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
   white-space: nowrap;
   user-select: none;
 }
 
-.btn-assay:hover {
-  background: linear-gradient(180deg, var(--card-hi), rgba(245,184,0,0.15));
-  border-color: var(--gold-hi);
-  color: var(--gold-hi);
+.btn-assay:hover,
+.btn.sec:hover {
+  background: #314E38;
+  border-color: var(--lime);
+  color: var(--lime);
   transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 
+.btn-primary,
+.btn.pri,
+.btn-subscribe,
+.btn-assay.primary,
 .btn-assay.active {
-  background: var(--gold);
-  color: var(--bg-raised);
-  border-color: var(--gold-hi);
-  font-weight: 600;
+  background: var(--lime) !important;
+  color: #050505 !important;
+  font-weight: 700 !important;
+  border: 1px solid var(--lime-bright) !important;
+  box-shadow: 0 4px 18px rgba(227, 255, 145, 0.35) !important;
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   FOCUS RINGS — WCAG 2.2 visible for all interactive elements
-   ══════════════════════════════════════════════════════════════════ */
+.btn-primary:hover,
+.btn.pri:hover,
+.btn-subscribe:hover,
+.btn-assay.primary:hover,
+.btn-assay.active:hover {
+  background: var(--lime-bright) !important;
+  color: #050505 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px rgba(227, 255, 145, 0.5) !important;
+}
+
 :focus-visible,
 .btn-assay:focus-visible,
 button:focus-visible,
@@ -160,7 +177,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--gold-hi) !important;
+  outline: 2px solid var(--lime) !important;
   outline-offset: 3px !important;
   border-radius: inherit;
 }
@@ -214,11 +231,11 @@ select:focus-visible,
 .status-badge.real {
   border-color: var(--line-strong);
   color: var(--gold-hi);
-  background: rgba(245,184,0,0.10);
+  background: rgba(227, 255, 145, 0.10);
 }
 
 .live-badge {
-  background: rgba(63,191,154,0.10);
+  background: rgba(227, 255, 145, 0.10);
   border-color: var(--pos);
   color: var(--pos);
 }
@@ -368,11 +385,11 @@ input::placeholder {
 }
 
 .table-card tbody tr:nth-child(even) {
-  background: rgba(245, 184, 0, 0.025);
+  background: rgba(227, 255, 145, 0.025);
 }
 
 .table-card tbody tr:hover {
-  background: rgba(245, 184, 0, 0.06);
+  background: rgba(227, 255, 145, 0.06);
 }
 
 /* Methodology responsive 3-column grid */
@@ -652,9 +669,9 @@ input::placeholder {
 }
 
 @keyframes logoGoldShimmer {
-  0% { filter: drop-shadow(0 0 0 rgba(245,184,0,0)); }
-  50% { filter: drop-shadow(0 0 16px rgba(255,215,94,0.7)); }
-  100% { filter: drop-shadow(0 0 0 rgba(245,184,0,0)); }
+  0% { filter: drop-shadow(0 0 0 rgba(227, 255, 145, 0)); }
+  50% { filter: drop-shadow(0 0 16px rgba(240, 255, 190, 0.7)); }
+  100% { filter: drop-shadow(0 0 0 rgba(227, 255, 145, 0)); }
 }
 
 .brand-crest-svg {

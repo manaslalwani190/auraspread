@@ -1,10 +1,11 @@
 // Canonical Contract Series Colors — Phase 2 requirement:
-// GOLDM #f5b800, GOLDTEN #5b9bd5, GOLDGUINEA #3fbf9a, GOLDPETAL #c98a5a
+// GOLDM #E3FF91, GOLDTEN #A8C77A, GOLDGUINEA #4ADE80, GOLDPETAL #F5F5E9
+// Canonical Contract Series Colors — Lime Green & Forest Green Theme
 const CONTRACT_COLORS = {
-  GOLDM: '#f5b800',
-  GOLDTEN: '#5b9bd5',
-  GOLDGUINEA: '#3fbf9a',
-  GOLDPETAL: '#c98a5a'
+  GOLDM: '#E3FF91',       // Primary Lime Green
+  GOLDTEN: '#A8C77A',     // Muted Green
+  GOLDGUINEA: '#4ADE80',  // Emerald Green
+  GOLDPETAL: '#F5F5E9'    // Soft White
 };
 
 /**
@@ -408,21 +409,21 @@ function hideChartSkeleton(chartId) {
 function getThemeColors() {
   const isLight = document.documentElement.getAttribute('data-theme') === 'light' || document.documentElement.getAttribute('data-theme') === 'parchment';
   return {
-    bgCard: isLight ? '#fffdf6' : '#1a160b',
-    bgPlot: isLight ? '#faf6ea' : '#0d0c09',
-    bgPaper: isLight ? '#faf6ea' : '#0d0c09',
-    textMain: isLight ? '#1d1708' : '#f6f0df',
-    textSecondary: isLight ? '#5c5133' : '#b9ae92',
-    textMuted: isLight ? '#7d7152' : '#8a7f66',
-    accentGold: isLight ? '#b07a00' : '#f5b800',
-    accentGoldBright: isLight ? '#8a5f00' : '#ffd75e',
-    borderBronze: isLight ? 'rgba(120,85,0,0.2)' : 'rgba(245,184,0,0.22)',
-    copperNeg: isLight ? '#c24a33' : '#e8624a',
-    verdigrisPos: isLight ? '#1f8f6e' : '#3fbf9a',
-    cGoldm: '#f5b800',
-    cGoldten: '#5b9bd5',
-    cGoldguinea: '#3fbf9a',
-    cGoldpetal: '#c98a5a'
+    bgCard: isLight ? '#FFFFFF' : '#1E3023',
+    bgPlot: isLight ? '#F5F5E9' : '#050505',
+    bgPaper: isLight ? '#F5F5E9' : '#050505',
+    textMain: isLight ? '#050505' : '#F5F5E9',
+    textSecondary: isLight ? '#263B2B' : '#A8C77A',
+    textMuted: isLight ? '#5C7461' : '#6E8552',
+    accentGold: isLight ? '#263B2B' : '#E3FF91',
+    accentGoldBright: isLight ? '#18261C' : '#F0FFBE',
+    borderBronze: isLight ? 'rgba(38, 59, 43, 0.2)' : 'rgba(227, 255, 145, 0.20)',
+    copperNeg: isLight ? '#C2410C' : '#FF6B6B',
+    verdigrisPos: isLight ? '#1B7A3E' : '#E3FF91',
+    cGoldm: isLight ? '#263B2B' : '#E3FF91',
+    cGoldten: isLight ? '#5C7461' : '#A8C77A',
+    cGoldguinea: isLight ? '#1B7A3E' : '#4ADE80',
+    cGoldpetal: isLight ? '#78350F' : '#F5F5E9'
   };
 }
 
@@ -1880,12 +1881,12 @@ function renderHeatmapChart() {
 
 function getHeatmapCellColor(median, isLight) {
   if (median === null || median === undefined || isNaN(median)) {
-    return isLight ? '#E5DFC9' : '#14110A';
+    return isLight ? '#DCE5D0' : '#101A13';
   }
   if (median > 200) return '#FF3D00'; // Extreme positive: Bright Red-Gold
   if (median > 100) return '#E65100'; // Strong positive: Deep Orange-Red
   if (median > 35)  return '#D48806'; // Moderate positive: Warm Amber
-  if (median >= -35) return isLight ? '#EDE8D5' : '#1A1508'; // Fair value: Quiet
+  if (median >= -35) return isLight ? '#E2ECD8' : '#18261C'; // Fair value: Quiet
   if (median >= -100) return '#1A7A6E'; // Moderate negative: Muted Teal
   return '#0D5C54'; // Strong negative: Deep Teal
 }
@@ -2051,9 +2052,9 @@ function renderMonthlyHeatmap(data) {
   const totalSvgWidth = marginLeft + numCols * (cellWidth + cellGap) + marginRight;
   const totalSvgHeight = marginTop + pairs.length * rowHeight + marginBottom;
 
-  const pairLabelColor = isLight ? '#2A2312' : '#C4B896';
-  const monthLabelColor = isLight ? '#3A2E18' : '#8A7D5A';
-  const borderColorQuiet = isLight ? '#C8BFA8' : '#3A2E18';
+  const pairLabelColor = isLight ? '#263B2B' : '#A8C77A';
+  const monthLabelColor = isLight ? '#263B2B' : '#6E8552';
+  const borderColorQuiet = isLight ? '#A8C77A' : '#1E3023';
 
   // Construct SVG markup
   let svgContent = `<svg class="monthly-heatmap-svg" width="${totalSvgWidth}" height="${totalSvgHeight}" viewBox="0 0 ${totalSvgWidth} ${totalSvgHeight}" xmlns="http://www.w3.org/2000/svg">`;
@@ -2064,13 +2065,13 @@ function renderMonthlyHeatmap(data) {
     if (isJan && cIdx > 0) {
       const lineX = marginLeft + cIdx * (cellWidth + cellGap) - cellGap / 2;
       svgContent += `
-        <line x1="${lineX}" y1="${marginTop - 6}" x2="${lineX}" y2="${marginTop + pairs.length * rowHeight + 4}" stroke="#FFBE0B" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.4" />
-        <text x="${lineX + 4}" y="${marginTop - 8}" fill="#FFBE0B" font-family="monospace" font-size="10px" font-weight="700" opacity="0.85">${mKey.slice(0, 4)}</text>
+        <line x1="${lineX}" y1="${marginTop - 6}" x2="${lineX}" y2="${marginTop + pairs.length * rowHeight + 4}" stroke="#E3FF91" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.4" />
+        <text x="${lineX + 4}" y="${marginTop - 8}" fill="#E3FF91" font-family="monospace" font-size="10px" font-weight="700" opacity="0.85">${mKey.slice(0, 4)}</text>
       `;
     } else if (cIdx === 0) {
       const startX = marginLeft;
       svgContent += `
-        <text x="${startX}" y="${marginTop - 8}" fill="#FFBE0B" font-family="monospace" font-size="10px" font-weight="700" opacity="0.85">${mKey.slice(0, 4)}</text>
+        <text x="${startX}" y="${marginTop - 8}" fill="#E3FF91" font-family="monospace" font-size="10px" font-weight="700" opacity="0.85">${mKey.slice(0, 4)}</text>
       `;
     }
   });
@@ -2102,7 +2103,7 @@ function renderMonthlyHeatmap(data) {
         const textVal = rounded > 0 ? `+${rounded}` : `${rounded}`;
         const isQuiet = Math.abs(cell.median) <= 35;
         const fillText = isQuiet
-          ? (isLight ? '#5D5030' : '#8A7D5A')
+          ? (isLight ? '#263B2B' : '#6E8552')
           : '#FFFFFF';
         innerText = `
           <text x="${xPos + cellWidth / 2}" y="${yPos + cellHeight / 2 + 3.5}" text-anchor="middle" font-family="monospace" font-size="9px" font-weight="700" fill="${fillText}" pointer-events="none">${textVal}</text>
@@ -2305,14 +2306,14 @@ function exportMonthlyHeatmapPNG() {
 
   const isLight = document.documentElement.getAttribute('data-theme') === 'light' ||
                   document.documentElement.getAttribute('data-theme') === 'parchment';
-  ctx.fillStyle = isLight ? '#F7F1E5' : '#14110A';
+  ctx.fillStyle = isLight ? '#F5F5E9' : '#101A13';
   ctx.fillRect(0, 0, width, height + 70);
 
-  ctx.fillStyle = isLight ? '#8B6914' : '#FFBE0B';
+  ctx.fillStyle = isLight ? '#263B2B' : '#E3FF91';
   ctx.font = 'bold 16px monospace';
   ctx.fillText('AuraSpread • Monthly Spread Regime Heatmap Grid', 24, 30);
 
-  ctx.fillStyle = isLight ? '#4A3B22' : '#C4B896';
+  ctx.fillStyle = isLight ? '#263B2B' : '#A8C77A';
   ctx.font = '11px sans-serif';
   ctx.fillText('Median carry-adjusted mispricing across MCX gold contract pairs (₹/10g 999 basis)', 24, 48);
 
@@ -2720,7 +2721,7 @@ function renderDrawdownChart(eqData, c) {
     type: 'scatter',
     mode: 'lines',
     fill: 'tozeroy',
-    fillcolor: 'rgba(232, 98, 74, 0.25)',
+    fillcolor: 'rgba(255, 107, 107, 0.22)',
     line: { color: c.copperNeg, width: 1.5 },
     hovertemplate: 'Date: %{x}<br>Portfolio Drawdown: ₹%{y:,.2f}<extra></extra>',
   };
@@ -2948,10 +2949,10 @@ function renderBreakevenGrid() {
     const bePct = Math.min(100, Math.max(4, (r.breakeven / maxVal) * 100));
     const tickPct = Math.min(100, Math.max(4, (r.actual / maxVal) * 100));
     const survivesBadge = r.survives
-      ? '<span style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; background:rgba(63,191,154,0.15); border:1px solid var(--pos); color:var(--pos); font-family:var(--font-mono); font-size:12px; font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> survives</span>'
-      : '<span style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; background:rgba(232,98,74,0.15); border:1px solid var(--neg); color:var(--neg); font-family:var(--font-mono); font-size:12px; font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> fails</span>';
+      ? '<span style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; background:rgba(227, 255, 145, 0.18); border:1px solid var(--pos); color:var(--pos); font-family:var(--font-mono); font-size:12px; font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> survives</span>'
+      : '<span style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; background:rgba(255, 107, 107, 0.18); border:1px solid var(--neg); color:var(--neg); font-family:var(--font-mono); font-size:12px; font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> fails</span>';
 
-    const bgZebra = idx % 2 === 0 ? 'transparent' : 'rgba(245, 184, 0, 0.025)';
+    const bgZebra = idx % 2 === 0 ? 'transparent' : 'rgba(227, 255, 145, 0.03)';
 
     html += `
       <tr style="background: ${bgZebra}; border-bottom: 1px solid var(--line);">
@@ -2960,7 +2961,7 @@ function renderBreakevenGrid() {
         <td style="padding: 14px 16px; font-family: var(--font-mono); font-weight: 600; color: ${r.survives ? 'var(--pos)' : 'var(--neg)'};">${formatIndianCurrency(r.breakeven)}/10g</td>
         <td style="padding: 14px 16px; font-family: var(--font-mono); color: var(--mute);">${formatIndianCurrency(r.actual)}/10g</td>
         <td style="padding: 14px 16px;">
-          <div style="position: relative; width: 140px; height: 16px; background: rgba(245,184,0,0.1); border-radius: 4px; overflow: visible;" title="Breakeven: ${formatIndianCurrency(r.breakeven)} vs Actual: ${formatIndianCurrency(r.actual)}">
+          <div style="position: relative; width: 140px; height: 16px; background: rgba(227, 255, 145, 0.12); border-radius: 4px; overflow: visible;" title="Breakeven: ${formatIndianCurrency(r.breakeven)} vs Actual: ${formatIndianCurrency(r.actual)}">
             <div style="height: 100%; width: ${bePct}%; background: ${r.survives ? 'var(--pos)' : 'var(--neg)'}; border-radius: 4px; opacity: 0.85;"></div>
             <div style="position: absolute; top: -3px; bottom: -3px; left: ${tickPct}%; width: 2px; background: var(--gold-hi); box-shadow: 0 0 3px rgba(0,0,0,0.8);" title="Actual Friction Hurdle: ${formatIndianCurrency(r.actual)}"></div>
           </div>
