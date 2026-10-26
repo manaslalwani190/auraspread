@@ -401,7 +401,10 @@ function hideChartSkeleton(chartId) {
   if (skeleton) {
     skeleton.style.display = 'none';
   }
-  // Ensure the container itself is visible
+  const stackedSkel = document.getElementById('stackedSkeleton');
+  if (stackedSkel && (chartId === 'monthlyHeatmapWrap' || chartId === 'stackedPanelsContainer')) {
+    stackedSkel.style.display = 'none';
+  }
   chartEl.style.minHeight = '';
 }
 
@@ -1229,7 +1232,7 @@ function setupEventListeners() {
   yearBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const yr = btn.getAttribute('data-year');
-      if (STATE.heatmapYear === yr) return;
+      if (STATE.heatmapYear === yr && STATE.chartsRendered.heatmap) return;
       STATE.heatmapYear = yr;
       yearBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -1404,6 +1407,7 @@ function renderAll() {
   updateBacktestMetrics();
   updateSignalAlerts();
   generateKeyInsights();
+  renderHeatmapChart();
 }
 
 // ── Lazy Chart Rendering with IntersectionObserver ────────────────────────
@@ -1895,270 +1899,334 @@ function renderMonthlyHeatmap(data) {
   const container = document.getElementById('monthlyHeatmapWrap');
   if (!container) return;
   if (!data) data = STATE.data;
-  if (!data) return;
-
-  const { heatmap, residuals } = data;
-  if (!residuals && !heatmap) return;
-
-  const pairs = (heatmap && heatmap.pairs && heatmap.pairs.length)
-    ? heatmap.pairs
-    : HEATMAP_CANONICAL_PAIRS;
-
-  // Determine all available months across the dataset
-  const monthSet = new Set();
-  pairs.forEach(p => {
-    (residuals[p] || []).forEach(r => {
-      if (r && r.date) monthSet.add(r.date.slice(0, 7));
-    });
-  });
-  if (heatmap && heatmap.dates) {
-    heatmap.dates.forEach(d => monthSet.add(d.slice(0, 7)));
+  if (!data) {
+    // Data still loading; keep skeleton visible
+    return;
   }
 
-  const allMonths = Array.from(monthSet).sort();
-  if (!allMonths.length) return;
+  try {
+    const { heatmap, residuals } = data;
+    if (!residuals && !heatmap) {
+      container.innerHTML = `
+        <div class="heatmap-empty-state" style="padding:48px 24px; text-align:center; color:var(--mute, #A8C77A); font-family:var(--mono, monospace);">
+          <p style="font-size:14px; margin-bottom:8px;">No residual or heatmap data available in dataset.</p>
+        </div>`;
+      hideChartSkeleton('monthlyHeatmapWrap');
+      return;
+    }
 
-  // Apply Year filter: 2024, 2025, 2026, or ALL (~33-34 months)
-  const selectedYear = STATE.heatmapYear || 'ALL';
-  let visibleMonths = allMonths;
-  if (selectedYear === '2024') {
-    visibleMonths = allMonths.filter(m => m.startsWith('2024-'));
-  } else if (selectedYear === '2025') {
-    visibleMonths = allMonths.filter(m => m.startsWith('2025-'));
-  } else if (selectedYear === '2026') {
-    visibleMonths = allMonths.filter(m => m.startsWith('2026-'));
-  } else if (selectedYear === 'FULL') {
-    visibleMonths = allMonths;
-  } else {
-    // 'ALL' default: active 2024-2026 analysis regime (~33-34 months)
-    visibleMonths = allMonths.filter(m => m >= '2024-01');
-    if (!visibleMonths.length) visibleMonths = allMonths.slice(-36);
-  }
+    const pairs = (heatmap && heatmap.pairs && heatmap.pairs.length)
+      ? heatmap.pairs
+      : HEATMAP_CANONICAL_PAIRS;
 
-  // Pre-calculate per-pair, per-month statistics & aggregate totals
-  let aggAboveFrictionDays = 0;
-  let aggBelowFrictionDays = 0;
-  let aggNearZeroDays = 0;
-
-  const gridData = []; // rows: pairs, cols: visibleMonths
-
-  pairs.forEach((pairKey, rIdx) => {
-    const pairResList = residuals[pairKey] || [];
-    const dateMap = new Map();
-    pairResList.forEach(item => {
-      if (item && item.date && item.residual !== null && item.residual !== undefined) {
-        dateMap.set(item.date, item.residual);
-      }
-    });
-
-    const rowCells = [];
-
-    visibleMonths.forEach((mKey, cIdx) => {
-      const vals = [];
-      dateMap.forEach((res, d) => {
-        if (d.startsWith(mKey)) vals.push(res);
+    // Determine all available months across the dataset
+    const monthSet = new Set();
+    pairs.forEach(p => {
+      ((residuals && residuals[p]) || []).forEach(r => {
+        if (r && r.date) monthSet.add(r.date.slice(0, 7));
       });
+    });
+    if (heatmap && heatmap.dates) {
+      heatmap.dates.forEach(d => monthSet.add(d.slice(0, 7)));
+    }
 
-      if (!vals.length) {
+    const allMonths = Array.from(monthSet).sort();
+    if (!allMonths.length) {
+      container.innerHTML = `
+        <div class="heatmap-empty-state" style="padding:48px 24px; text-align:center; color:var(--mute, #A8C77A); font-family:var(--mono, monospace);">
+          <p style="font-size:14px; margin-bottom:8px;">No month-cells available for heatmap rendering.</p>
+        </div>`;
+      hideChartSkeleton('monthlyHeatmapWrap');
+      return;
+    }
+
+    // Apply Year filter: 2024, 2025, 2026, or ALL (~33-34 months)
+    const selectedYear = STATE.heatmapYear || 'ALL';
+    let visibleMonths = allMonths;
+    if (selectedYear === '2024') {
+      visibleMonths = allMonths.filter(m => m.startsWith('2024-'));
+    } else if (selectedYear === '2025') {
+      visibleMonths = allMonths.filter(m => m.startsWith('2025-'));
+    } else if (selectedYear === '2026') {
+      visibleMonths = allMonths.filter(m => m.startsWith('2026-'));
+    } else if (selectedYear === 'FULL') {
+      visibleMonths = allMonths;
+    } else if (selectedYear === 'ALL') {
+      // 'ALL' default: active 2024-2026 analysis regime (~33-34 months)
+      visibleMonths = allMonths.filter(m => m >= '2024-01');
+      if (!visibleMonths.length) visibleMonths = allMonths.slice(-36);
+    } else {
+      // Custom or arbitrary year
+      visibleMonths = allMonths.filter(m => m.startsWith(selectedYear + "-"));
+    }
+
+    if (!visibleMonths.length) {
+      container.innerHTML = `
+        <div class="heatmap-empty-state" style="padding:48px 24px; text-align:center; color:var(--mute, #A8C77A); font-family:var(--mono, monospace);">
+          <p style="font-size:14px; margin-bottom:8px;">No data available for the selected filters (${selectedYear}).</p>
+          <button type="button" class="btn-assay btn-sm" id="btnResetHeatmapFilter" style="margin-top:12px; cursor:pointer;">Reset to All Years</button>
+        </div>`;
+      const btnReset = document.getElementById('btnResetHeatmapFilter');
+      if (btnReset) {
+        btnReset.addEventListener('click', () => {
+          STATE.heatmapYear = 'ALL';
+          const yearBtns = document.querySelectorAll('#heatmapYearSelector button');
+          yearBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-year') === 'ALL'));
+          renderMonthlyHeatmap(STATE.data);
+        });
+      }
+      hideChartSkeleton('monthlyHeatmapWrap');
+      return;
+    }
+
+    // Pre-calculate per-pair, per-month statistics & aggregate totals
+    let aggAboveFrictionDays = 0;
+    let aggBelowFrictionDays = 0;
+    let aggNearZeroDays = 0;
+
+    const gridData = []; // rows: pairs, cols: visibleMonths
+
+    pairs.forEach((pairKey, rIdx) => {
+      let pairResList = residuals && residuals[pairKey];
+      const dateMap = new Map();
+      if (pairResList && pairResList.length) {
+        pairResList.forEach(item => {
+          if (item && item.date && item.residual !== null && item.residual !== undefined) {
+            dateMap.set(item.date, item.residual);
+          }
+        });
+      } else if (heatmap && heatmap.matrix && heatmap.dates) {
+        const pIdx = heatmap.pairs.indexOf(pairKey);
+        if (pIdx !== -1 && heatmap.matrix[pIdx]) {
+          heatmap.dates.forEach((d, dIdx) => {
+            const val = heatmap.matrix[pIdx][dIdx];
+            if (val !== null && val !== undefined) {
+              dateMap.set(d, val);
+            }
+          });
+        }
+      }
+
+      const rowCells = [];
+
+      visibleMonths.forEach((mKey, cIdx) => {
+        const vals = [];
+        dateMap.forEach((res, d) => {
+          if (d.startsWith(mKey)) vals.push(res);
+        });
+
+        if (!vals.length) {
+          rowCells.push({
+            pairKey,
+            pairLabel: HEATMAP_PAIR_LABELS[pairKey] || pairKey.replace('-', ' - '),
+            monthKey: mKey,
+            hasData: false,
+            median: null,
+            totalDays: 0,
+            daysAbove: 0,
+            daysBelow: 0,
+            daysWithin: 0,
+            daysNearZero: 0,
+            pctAbove: 0,
+            pctBelow: 0,
+            pctWithin: 0,
+            rIdx,
+            cIdx,
+          });
+          return;
+        }
+
+        vals.sort((a, b) => a - b);
+        const mid = Math.floor(vals.length / 2);
+        const median = vals.length % 2 !== 0 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+
+        const daysAbove = vals.filter(v => v > 35).length;
+        const daysBelow = vals.filter(v => v < -35).length;
+        const daysWithin = vals.filter(v => Math.abs(v) <= 35).length;
+        const daysNearZero = vals.filter(v => Math.abs(v) <= 15).length;
+
+        aggAboveFrictionDays += daysAbove;
+        aggBelowFrictionDays += daysBelow;
+        aggNearZeroDays += daysNearZero;
+
+        const totalDays = vals.length;
+        const pctAbove = Math.round((daysAbove / totalDays) * 100);
+        const pctBelow = Math.round((daysBelow / totalDays) * 100);
+        const pctWithin = Math.round((daysWithin / totalDays) * 100);
+
         rowCells.push({
           pairKey,
           pairLabel: HEATMAP_PAIR_LABELS[pairKey] || pairKey.replace('-', ' - '),
           monthKey: mKey,
-          hasData: false,
-          median: null,
-          totalDays: 0,
-          daysAbove: 0,
-          daysBelow: 0,
-          daysWithin: 0,
-          daysNearZero: 0,
-          pctAbove: 0,
-          pctBelow: 0,
-          pctWithin: 0,
+          hasData: true,
+          median,
+          totalDays,
+          daysAbove,
+          daysBelow,
+          daysWithin,
+          daysNearZero,
+          pctAbove,
+          pctBelow,
+          pctWithin,
           rIdx,
           cIdx,
         });
-        return;
+      });
+
+      gridData.push(rowCells);
+    });
+
+    // Update Summary Strip Elements
+    const hmTotalMonthsEl = document.getElementById('hmTotalMonths');
+    const cntAboveEl = document.getElementById('cntAboveFriction');
+    const cntBelowEl = document.getElementById('cntBelowFriction');
+    const cntNearEl = document.getElementById('cntNearZero');
+
+    if (hmTotalMonthsEl) hmTotalMonthsEl.textContent = `${visibleMonths.length} Months (${pairs.length * visibleMonths.length} Cells)`;
+    if (cntAboveEl) cntAboveEl.textContent = `${aggAboveFrictionDays.toLocaleString('en-IN')} days`;
+    if (cntBelowEl) cntBelowEl.textContent = `${aggBelowFrictionDays.toLocaleString('en-IN')} days`;
+    if (cntNearEl) cntNearEl.textContent = `${aggNearZeroDays.toLocaleString('en-IN')} days`;
+
+    // Dynamic SVG Layout Calculations
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light' ||
+                    document.documentElement.getAttribute('data-theme') === 'parchment';
+    const containerWidth = Math.max(container.clientWidth || 920, 360);
+    const marginLeft = 160;
+    const marginRight = 24;
+    const marginTop = 24;
+    const marginBottom = 60;
+    const rowHeight = 36;
+    const cellHeight = 32;
+    const cellGap = 2;
+    const rx = 3;
+
+    const numCols = Math.max(1, visibleMonths.length);
+    const minCellWidth = 24;
+    const availWidth = Math.max(containerWidth - marginLeft - marginRight, numCols * minCellWidth);
+    const cellWidth = Math.max(minCellWidth, Math.floor((availWidth - (numCols - 1) * cellGap) / numCols));
+
+    const totalSvgWidth = marginLeft + numCols * (cellWidth + cellGap) + marginRight;
+    const totalSvgHeight = marginTop + pairs.length * rowHeight + marginBottom;
+
+    const pairLabelColor = isLight ? '#263B2B' : '#A8C77A';
+    const monthLabelColor = isLight ? '#263B2B' : '#6E8552';
+    const borderColorQuiet = isLight ? '#A8C77A' : '#1E3023';
+
+    // Construct SVG markup
+    let svgContent = `<svg class="monthly-heatmap-svg" width="${totalSvgWidth}" height="${totalSvgHeight}" viewBox="0 0 ${totalSvgWidth} ${totalSvgHeight}" xmlns="http://www.w3.org/2000/svg">`;
+
+    // Year Boundaries & Header Year Indicators
+    visibleMonths.forEach((mKey, cIdx) => {
+      const isJan = mKey.slice(5, 7) === '01';
+      if (isJan && cIdx > 0) {
+        const lineX = marginLeft + cIdx * (cellWidth + cellGap) - cellGap / 2;
+        svgContent += `
+          <line x1="${lineX}" y1="${marginTop - 6}" x2="${lineX}" y2="${marginTop + pairs.length * rowHeight + 4}" stroke="#E3FF91" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.4" />
+          <text x="${lineX + 4}" y="${marginTop - 8}" fill="#E3FF91" font-family="monospace" font-size="10px" font-weight="700" opacity="0.85">${mKey.slice(0, 4)}</text>
+        `;
+      } else if (cIdx === 0) {
+        const startX = marginLeft;
+        svgContent += `
+          <text x="${startX}" y="${marginTop - 8}" fill="#E3FF91" font-family="monospace" font-size="10px" font-weight="700" opacity="0.85">${mKey.slice(0, 4)}</text>
+        `;
       }
+    });
 
-      vals.sort((a, b) => a - b);
-      const mid = Math.floor(vals.length / 2);
-      const median = vals.length % 2 !== 0 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+    // Y-Axis Pair Labels
+    pairs.forEach((pairKey, rIdx) => {
+      const label = HEATMAP_PAIR_LABELS[pairKey] || pairKey.replace('-', ' - ');
+      const yCenter = marginTop + rIdx * rowHeight + cellHeight / 2 + 4;
+      svgContent += `
+        <text x="${marginLeft - 12}" y="${yCenter}" text-anchor="end" fill="${pairLabelColor}" font-family="monospace" font-size="11px" font-weight="600">${label}</text>
+      `;
+    });
 
-      const daysAbove = vals.filter(v => v > 35).length;
-      const daysBelow = vals.filter(v => v < -35).length;
-      const daysWithin = vals.filter(v => Math.abs(v) <= 35).length;
-      const daysNearZero = vals.filter(v => Math.abs(v) <= 15).length;
+    // Heatmap Cells & Inner Cell Text
+    pairs.forEach((pairKey, rIdx) => {
+      const yPos = marginTop + rIdx * rowHeight;
+      visibleMonths.forEach((mKey, cIdx) => {
+        const cell = gridData[rIdx][cIdx];
+        const xPos = marginLeft + cIdx * (cellWidth + cellGap);
+        const fillColor = getHeatmapCellColor(cell.median, isLight);
+        const strokeColor = (!cell.hasData || (cell.median !== null && Math.abs(cell.median) <= 35))
+          ? borderColorQuiet
+          : 'rgba(0,0,0,0.2)';
+        const strokeWidth = (!cell.hasData || (cell.median !== null && Math.abs(cell.median) <= 35)) ? '1' : '0.5';
 
-      aggAboveFrictionDays += daysAbove;
-      aggBelowFrictionDays += daysBelow;
-      aggNearZeroDays += daysNearZero;
+        let innerText = '';
+        if (cellWidth >= 30 && cell.hasData && cell.median !== null) {
+          const rounded = Math.round(cell.median);
+          const textVal = rounded > 0 ? `+${rounded}` : `${rounded}`;
+          const isQuiet = Math.abs(cell.median) <= 35;
+          const fillText = isQuiet
+            ? (isLight ? '#263B2B' : '#6E8552')
+            : '#FFFFFF';
+          innerText = `
+            <text x="${xPos + cellWidth / 2}" y="${yPos + cellHeight / 2 + 3.5}" text-anchor="middle" font-family="monospace" font-size="9px" font-weight="700" fill="${fillText}" pointer-events="none">${textVal}</text>
+          `;
+        }
 
-      const totalDays = vals.length;
-      const pctAbove = Math.round((daysAbove / totalDays) * 100);
-      const pctBelow = Math.round((daysBelow / totalDays) * 100);
-      const pctWithin = Math.round((daysWithin / totalDays) * 100);
-
-      rowCells.push({
-        pairKey,
-        pairLabel: HEATMAP_PAIR_LABELS[pairKey] || pairKey.replace('-', ' - '),
-        monthKey: mKey,
-        hasData: true,
-        median,
-        totalDays,
-        daysAbove,
-        daysBelow,
-        daysWithin,
-        daysNearZero,
-        pctAbove,
-        pctBelow,
-        pctWithin,
-        rIdx,
-        cIdx,
+        svgContent += `
+          <rect
+            class="heatmap-cell"
+            data-ridx="${rIdx}"
+            data-cidx="${cIdx}"
+            x="${xPos}"
+            y="${yPos}"
+            width="${cellWidth}"
+            height="${cellHeight}"
+            rx="${rx}"
+            ry="${rx}"
+            fill="${fillColor}"
+            stroke="${strokeColor}"
+            stroke-width="${strokeWidth}"
+          />
+          ${innerText}
+        `;
       });
     });
 
-    gridData.push(rowCells);
-  });
-
-  // Update Summary Strip Elements
-  const hmTotalMonthsEl = document.getElementById('hmTotalMonths');
-  const cntAboveEl = document.getElementById('cntAboveFriction');
-  const cntBelowEl = document.getElementById('cntBelowFriction');
-  const cntNearEl = document.getElementById('cntNearZero');
-
-  if (hmTotalMonthsEl) hmTotalMonthsEl.textContent = `${visibleMonths.length} Months (${pairs.length * visibleMonths.length} Cells)`;
-  if (cntAboveEl) cntAboveEl.textContent = `${aggAboveFrictionDays.toLocaleString('en-IN')} days`;
-  if (cntBelowEl) cntBelowEl.textContent = `${aggBelowFrictionDays.toLocaleString('en-IN')} days`;
-  if (cntNearEl) cntNearEl.textContent = `${aggNearZeroDays.toLocaleString('en-IN')} days`;
-
-  // Dynamic SVG Layout Calculations
-  const isLight = document.documentElement.getAttribute('data-theme') === 'light' ||
-                  document.documentElement.getAttribute('data-theme') === 'parchment';
-  const containerWidth = Math.max(container.clientWidth || 920, 360);
-  const marginLeft = 160;
-  const marginRight = 24;
-  const marginTop = 24;
-  const marginBottom = 60;
-  const rowHeight = 36;
-  const cellHeight = 32;
-  const cellGap = 2;
-  const rx = 3;
-
-  const numCols = visibleMonths.length;
-  const minCellWidth = 24;
-  const availWidth = Math.max(containerWidth - marginLeft - marginRight, numCols * minCellWidth);
-  const cellWidth = Math.max(minCellWidth, Math.floor((availWidth - (numCols - 1) * cellGap) / numCols));
-
-  const totalSvgWidth = marginLeft + numCols * (cellWidth + cellGap) + marginRight;
-  const totalSvgHeight = marginTop + pairs.length * rowHeight + marginBottom;
-
-  const pairLabelColor = isLight ? '#263B2B' : '#A8C77A';
-  const monthLabelColor = isLight ? '#263B2B' : '#6E8552';
-  const borderColorQuiet = isLight ? '#A8C77A' : '#1E3023';
-
-  // Construct SVG markup
-  let svgContent = `<svg class="monthly-heatmap-svg" width="${totalSvgWidth}" height="${totalSvgHeight}" viewBox="0 0 ${totalSvgWidth} ${totalSvgHeight}" xmlns="http://www.w3.org/2000/svg">`;
-
-  // Year Boundaries & Header Year Indicators
-  visibleMonths.forEach((mKey, cIdx) => {
-    const isJan = mKey.slice(5, 7) === '01';
-    if (isJan && cIdx > 0) {
-      const lineX = marginLeft + cIdx * (cellWidth + cellGap) - cellGap / 2;
-      svgContent += `
-        <line x1="${lineX}" y1="${marginTop - 6}" x2="${lineX}" y2="${marginTop + pairs.length * rowHeight + 4}" stroke="#E3FF91" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.4" />
-        <text x="${lineX + 4}" y="${marginTop - 8}" fill="#E3FF91" font-family="monospace" font-size="10px" font-weight="700" opacity="0.85">${mKey.slice(0, 4)}</text>
-      `;
-    } else if (cIdx === 0) {
-      const startX = marginLeft;
-      svgContent += `
-        <text x="${startX}" y="${marginTop - 8}" fill="#E3FF91" font-family="monospace" font-size="10px" font-weight="700" opacity="0.85">${mKey.slice(0, 4)}</text>
-      `;
-    }
-  });
-
-  // Y-Axis Pair Labels
-  pairs.forEach((pairKey, rIdx) => {
-    const label = HEATMAP_PAIR_LABELS[pairKey] || pairKey.replace('-', ' - ');
-    const yCenter = marginTop + rIdx * rowHeight + cellHeight / 2 + 4;
-    svgContent += `
-      <text x="${marginLeft - 12}" y="${yCenter}" text-anchor="end" fill="${pairLabelColor}" font-family="monospace" font-size="11px" font-weight="600">${label}</text>
-    `;
-  });
-
-  // Heatmap Cells & Inner Cell Text
-  pairs.forEach((pairKey, rIdx) => {
-    const yPos = marginTop + rIdx * rowHeight;
+    // X-Axis Month Labels
     visibleMonths.forEach((mKey, cIdx) => {
-      const cell = gridData[rIdx][cIdx];
-      const xPos = marginLeft + cIdx * (cellWidth + cellGap);
-      const fillColor = getHeatmapCellColor(cell.median, isLight);
-      const strokeColor = (!cell.hasData || (cell.median !== null && Math.abs(cell.median) <= 35))
-        ? borderColorQuiet
-        : 'rgba(0,0,0,0.2)';
-      const strokeWidth = (!cell.hasData || (cell.median !== null && Math.abs(cell.median) <= 35)) ? '1' : '0.5';
-
-      let innerText = '';
-      if (cellWidth >= 30 && cell.hasData && cell.median !== null) {
-        const rounded = Math.round(cell.median);
-        const textVal = rounded > 0 ? `+${rounded}` : `${rounded}`;
-        const isQuiet = Math.abs(cell.median) <= 35;
-        const fillText = isQuiet
-          ? (isLight ? '#263B2B' : '#6E8552')
-          : '#FFFFFF';
-        innerText = `
-          <text x="${xPos + cellWidth / 2}" y="${yPos + cellHeight / 2 + 3.5}" text-anchor="middle" font-family="monospace" font-size="9px" font-weight="700" fill="${fillText}" pointer-events="none">${textVal}</text>
-        `;
-      }
-
+      const label = formatMonthShort(mKey);
+      const xPos = marginLeft + cIdx * (cellWidth + cellGap) + cellWidth / 2;
+      const yPos = marginTop + pairs.length * rowHeight + 14;
       svgContent += `
-        <rect
-          class="heatmap-cell"
-          data-ridx="${rIdx}"
-          data-cidx="${cIdx}"
-          x="${xPos}"
-          y="${yPos}"
-          width="${cellWidth}"
-          height="${cellHeight}"
-          rx="${rx}"
-          ry="${rx}"
-          fill="${fillColor}"
-          stroke="${strokeColor}"
-          stroke-width="${strokeWidth}"
-        />
-        ${innerText}
+        <text x="${xPos}" y="${yPos}" transform="rotate(-45, ${xPos}, ${yPos})" text-anchor="end" font-family="monospace" font-size="10px" fill="${monthLabelColor}">${label}</text>
       `;
     });
-  });
 
-  // X-Axis Month Labels
-  visibleMonths.forEach((mKey, cIdx) => {
-    const label = formatMonthShort(mKey);
-    const xPos = marginLeft + cIdx * (cellWidth + cellGap) + cellWidth / 2;
-    const yPos = marginTop + pairs.length * rowHeight + 14;
-    svgContent += `
-      <text x="${xPos}" y="${yPos}" transform="rotate(-45, ${xPos}, ${yPos})" text-anchor="end" font-family="monospace" font-size="10px" fill="${monthLabelColor}">${label}</text>
-    `;
-  });
+    svgContent += '</svg>';
 
-  svgContent += '</svg>';
+    // Insert into DOM
+    container.innerHTML = svgContent;
 
-  // Insert into DOM
-  container.innerHTML = svgContent;
+    // Cache grid data for hover and filters
+    STATE._heatmapGridData = gridData;
 
-  // Cache grid data for hover and filters
-  STATE._heatmapGridData = gridData;
+    // Setup interactions and apply current filter
+    setupHeatmapInteractions(container, gridData);
+    if (STATE.activeHeatmapFilter) {
+      applyHeatmapFilter();
+    }
 
-  // Setup interactions and apply current filter
-  setupHeatmapInteractions(container, gridData);
-  if (STATE.activeHeatmapFilter) {
-    applyHeatmapFilter();
+    hideChartSkeleton('monthlyHeatmapWrap');
+    STATE.chartsRendered.heatmap = true;
+  } catch (err) {
+    console.error('Failed to render monthly heatmap grid:', err);
+    container.innerHTML = `
+      <div class="heatmap-error-state" style="padding:40px 24px; text-align:center; color:#FF6B6B; font-family:var(--mono, monospace);">
+        <p style="font-size:14px; margin-bottom:6px;">Failed to render Monthly Heatmap Grid.</p>
+        <p style="font-size:12px; opacity:0.8; margin-bottom:12px;">${err.message || 'Unknown error'}</p>
+        <button type="button" class="btn-assay btn-sm" id="btnRetryHeatmap" style="cursor:pointer;">Retry</button>
+      </div>`;
+    const btnRetry = document.getElementById('btnRetryHeatmap');
+    if (btnRetry) {
+      btnRetry.addEventListener('click', () => renderMonthlyHeatmap(STATE.data));
+    }
+    hideChartSkeleton('monthlyHeatmapWrap');
   }
-
-  hideChartSkeleton('stackedPanelsContainer');
-  hideChartSkeleton('monthlyHeatmapWrap');
-  STATE.chartsRendered.heatmap = true;
 }
-
 function setupHeatmapInteractions(container, gridData) {
   const tooltip = document.getElementById('hmTooltip');
   const tMonth = document.getElementById('hmtMonth');
