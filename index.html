@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AuraSpread · MCX Assay Office</title>
+<meta name="description" content="Same gold. Four boxes. Is the gap real? AuraSpread separates carry, friction and genuine mispricing across MCX gold contracts.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="shortcut icon" href="favicon.ico">
+<!-- Open Graph / Social Meta Tags -->
+<meta property="og:title" content="AuraSpread | MCX Gold Spread Monitor — 23-Year Archive, 6 Pairs">
+<meta property="og:description" content="Does the price gap between MCX gold contracts survive real trading costs? 23-year deep archive, 6 pairs, honest quantitative answer.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="assets/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="AuraSpread | MCX Gold Spread Monitor — 23-Year Archive, 6 Pairs">
+<meta name="twitter:description" content="Does the price gap between MCX gold contracts survive real trading costs? 23-year deep archive, 6 pairs, honest quantitative answer.">
+<meta name="twitter:image" content="assets/og-image.png">
+<!-- Shared Design Tokens & Component Styles -->
+<link rel="stylesheet" href="styles/tokens.css">
+<link rel="stylesheet" href="styles/components.css">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0c09; --bg2:#16130c; --ink:#f6f0df; --mute:#b9ae92;
+  --gold:#f5b800; --gold2:#ffd75e; --gold3:#a8770a; --line:rgba(245,184,0,.22);
+  --serif:'Fraunces',Georgia,serif; --mono:'JetBrains Mono',ui-monospace,monospace; --sans:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+html{color-scheme:dark;scrollbar-color:#6b4f08 var(--bg);scrollbar-width:thin}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:10px}::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#6b4f08;border-radius:8px}
+
+/* ---------- INTRO (max 5s) ---------- */
+#intro{position:fixed;inset:0;z-index:100;background:radial-gradient(ellipse at 50% 46%,#1c1706 0%,#0d0c09 60%);
+  display:grid;place-items:center;transition:opacity .7s ease,visibility .7s;}
+#intro.done{opacity:0;visibility:hidden;pointer-events:none}
+#gems{position:absolute;inset:0;width:100%;height:100%}
+.stage{position:relative;text-align:center;top:-4vh;padding:0 20px;pointer-events:none}
+.logo{font-family:var(--serif);font-weight:800;font-size:clamp(46px,10vw,112px);letter-spacing:.01em;line-height:1;
+  opacity:0;transform:scale(.9);filter:blur(10px) drop-shadow(0 0 28px rgba(245,184,0,.55));
+  animation:logoIn .9s 2.9s cubic-bezier(.2,.8,.2,1) forwards}
+.word{background:linear-gradient(100deg,#8a6200 25%,#ffe27a 42%,#fff6c8 50%,#ffd24a 58%,#b88400 75%);
+  background-size:260% 100%;background-position:100% 0;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:sweep 1.3s 3.35s ease-out forwards}
+.tag{font-family:var(--serif);font-weight:600;font-size:clamp(15px,2.6vw,26px);letter-spacing:.14em;text-transform:uppercase;margin-top:22px;
+  opacity:0;transform:translateY(10px);animation:rise .6s 3.7s ease-out forwards}
+.tag2{font-family:var(--mono);color:var(--gold);font-size:clamp(11px,1.6vw,16px);letter-spacing:.28em;margin-top:12px;
+  opacity:0;transform:translateY(10px);animation:rise .6s 4.1s ease-out forwards}
+.sub{font-family:var(--mono);color:var(--mute);font-size:11px;letter-spacing:.3em;margin-top:26px;opacity:0;animation:rise .6s 4.3s ease-out forwards}
+.progress{position:absolute;left:0;bottom:0;height:3px;width:100%;background:rgba(245,184,0,.12)}
+.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold3),var(--gold2));animation:fill 5s linear forwards}
+#skip{position:absolute;right:20px;bottom:22px;background:rgba(245,184,0,.1);border:1px solid var(--line);color:var(--gold2);
+  font:600 12px var(--mono);letter-spacing:.12em;padding:10px 16px;border-radius:999px;cursor:pointer;transition:.2s}
+#skip:hover,#skip:focus-visible{background:rgba(245,184,0,.22);outline:none}
+@keyframes logoIn{to{opacity:1;transform:none;filter:blur(0) drop-shadow(0 0 22px rgba(245,184,0,.45))}}
+@keyframes sweep{to{background-position:0 0}}
+@keyframes rise{to{opacity:1;transform:none}}
+@keyframes fill{to{width:100%}}
+
+/* ---------- LANDING ---------- */
+.page{opacity:0;transform:translateY(14px);transition:opacity .9s .1s,transform .9s .1s}
+body.ready .page{opacity:1;transform:none}
+nav{display:flex;justify-content:space-between;align-items:center;max-width:1180px;margin:0 auto;padding:22px 24px}
+.brand{font-family:var(--serif);font-weight:800;font-size:22px;color:var(--gold2);text-decoration:none;display:flex;align-items:center;gap:10px}
+.brand svg{width:26px;height:26px}
+.brand small{display:block;font:400 10px var(--mono);letter-spacing:.22em;color:var(--mute)}
+.btn{display:inline-flex;align-items:center;gap:10px;font:600 14px var(--mono);letter-spacing:.06em;text-decoration:none;border-radius:12px;padding:14px 22px;transition:.25s}
+.btn.pri{background:linear-gradient(135deg,#ffd75e,#e5a500);color:#1a1300;box-shadow:0 8px 30px rgba(245,184,0,.28)}
+.btn.pri:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(245,184,0,.45)}
+.btn.sec{border:1px solid var(--line);color:var(--gold2)}
+.btn.sec:hover{background:rgba(245,184,0,.1)}
+.btn:focus-visible{outline:2px solid var(--gold2);outline-offset:3px}
+.hero{max-width:1180px;margin:0 auto;padding:6vh 24px 4vh;text-align:center;position:relative}
+.hero::before{content:"";position:absolute;inset:-10% 10% auto;height:420px;background:radial-gradient(closest-side,rgba(245,184,0,.16),transparent);filter:blur(10px);z-index:-1}
+.eyebrow{font:600 12px var(--mono);letter-spacing:.24em;color:var(--gold)}
+h1{font-family:var(--serif);font-weight:800;font-size:clamp(38px,7vw,84px);line-height:1.04;margin:18px 0 20px}
+h1 em{font-style:normal;background:linear-gradient(100deg,#ffd75e,#e5a500);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{max-width:680px;margin:0 auto 32px;color:var(--mute);font-size:clamp(16px,2vw,19px);line-height:1.6}
+.cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.boxes{max-width:1180px;margin:56px auto 0;padding:0 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.box{background:linear-gradient(160deg,#1d1808,#12100a);border:1px solid var(--line);border-radius:16px;padding:22px 20px;position:relative;overflow:hidden;transition:.3s}
+.box:hover{transform:translateY(-4px);border-color:rgba(245,184,0,.55)}
+.bar{height:46px;margin:0 0 18px;border-radius:6px 6px 3px 3px;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,#8a6200,#ffd75e 45%,#c88a00);clip-path:polygon(8% 0,92% 0,100% 100%,0 100%)}
+.bar::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 35%,rgba(255,255,255,.55) 50%,transparent 65%);transform:translateX(-120%);animation:shine 3.6s infinite}
+.box:nth-child(2) .bar::after{animation-delay:.4s}.box:nth-child(3) .bar::after{animation-delay:.8s}.box:nth-child(4) .bar::after{animation-delay:1.2s}
+@keyframes shine{60%,100%{transform:translateX(120%)}}
+.box h3{font-family:var(--serif);font-size:22px}
+.box p{font:400 12px var(--mono);color:var(--mute);letter-spacing:.08em;margin-top:6px}
+.box b{font:600 13px var(--mono);color:var(--gold2);display:block;margin-top:14px}
+.stats{max-width:1180px;margin:34px auto 0;padding:0 24px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.stats span{font:400 12px var(--mono);letter-spacing:.08em;color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:8px 14px}
+.stats span b{color:var(--gold2);font-weight:600}
+footer{text-align:center;padding:56px 24px 40px;color:var(--mute);font:400 12px var(--mono);letter-spacing:.1em}
+@media(max-width:900px){.boxes{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.boxes{grid-template-columns:1fr}.btn{width:100%;justify-content:center}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important;transition-duration:.01s!important}}
+</style>
+</head>
+<body>
+
+<!-- INTRO: auto-ends at 5.0s. Skip with click / any key / button. Shows once per session (add ?intro=1 to replay). -->
+<div id="intro" role="dialog" aria-label="AuraSpread intro">
+  <canvas id="gems" aria-hidden="true"></canvas>
+  <div class="stage">
+    <div class="logo"><span class="word">AuraSpread</span></div>
+    <div class="tag">Same gold. Four boxes.</div>
+    <div class="tag2">IS THE GAP REAL?</div>
+    <div class="sub">MCX ASSAY OFFICE</div>
+  </div>
+  <button id="skip" type="button">SKIP &rarr;</button>
+  <div class="progress"><i></i></div>
+</div>
+
+<div class="page">
+  <nav>
+    <a class="brand" href="#">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#c88a00"/></linearGradient></defs><path d="M16 2 30 12 16 30 2 12Z" fill="url(#g)"/><path d="M2 12h28M16 2l-5 10 5 18 5-18Z" fill="none" stroke="#1a1300" stroke-opacity=".45" stroke-width="1.2"/></svg>
+      <span>AuraSpread<small>MCX ASSAY OFFICE</small></span>
+    </a>
+    <a class="btn sec" href="./app.html">Open app</a>
+  </nav>
+
+  <header class="hero">
+    <div class="eyebrow">HACK IN THE HILLS '26 · PROBLEM STATEMENT 3</div>
+    <h1>Same gold. Four boxes.<br><em>Is the gap real?</em></h1>
+    <p class="lead">MCX sells gold in 100g, 10g, 8g and 1g contracts. AuraSpread strips out carry and trading frictions so you can see which price gaps are genuine mispricings and which are illusions.</p>
+    <div class="cta">
+      <a class="btn pri" href="./app.html">Enter the Assay Office &rarr;</a>
+      <a class="btn sec" href="./app.html#methodology">How it works</a>
+    </div>
+  </header>
+
+  <section class="boxes" aria-label="Contracts">
+    <article class="box"><div class="bar" style="width:100%"></div><h3>GOLD&nbsp;M</h3><p>100 g</p><b>Benchmark</b></article>
+    <article class="box"><div class="bar" style="width:78%"></div><h3>GOLD&nbsp;TEN</h3><p>10 g</p><b>Retail favourite</b></article>
+    <article class="box"><div class="bar" style="width:62%"></div><h3>GOLD&nbsp;GUINEA</h3><p>8 g</p><b>Mid-size lot</b></article>
+    <article class="box"><div class="bar" style="width:40%"></div><h3>GOLD&nbsp;PETAL</h3><p>1 g</p><b>Smallest lot</b></article>
+  </section>
+
+  <div class="stats">
+    <span><b>4</b> contracts</span><span><b>6</b> pairs tested</span><span><b>3 of 6</b> survive costs</span><span>carry-adjusted &middot; friction-aware</span>
+  </div>
+  <footer>AURASPREAD &middot; RESEARCH TOOL, NOT INVESTMENT ADVICE</footer>
+</div>
+
+<script>
+(()=>{
+  const DUR=5000;                       // hard cap in ms
+  const intro=document.getElementById('intro');
+  const cv=document.getElementById('gems'),ctx=cv.getContext('2d');
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const force=/[?&]intro=1/.test(location.search);
+  let seen=false;try{seen=sessionStorage.getItem('aura_seen')==='1'}catch(e){}
+  let raf=0,finished=false;
+
+  function finish(){
+    if(finished)return;finished=true;cancelAnimationFrame(raf);
+    try{sessionStorage.setItem('aura_seen','1')}catch(e){}
+    intro.classList.add('done');document.body.classList.add('ready');
+    setTimeout(()=>intro.remove(),900);
+  }
+  if((seen&&!force)||reduce){intro.remove();document.body.classList.add('ready');return;}
+
+  let W,H,dpr;
+  function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
+  resize();addEventListener('resize',resize);
+
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  const ease=t=>t*t*t;
+  const N=innerWidth<600?42:70;
+  const gems=Array.from({length:N},(_,i)=>{const z=Math.random();
+    return{x:Math.random(),y:rnd(-.5,.1),z,r:7+z*30,n:[4,5,6,6][i%4],rot:rnd(0,6.28),vr:rnd(-1,1)*(.6+z),vy:.22+z*.5,fx:0,fy:0,frozen:false}});
+  const sparks=[];let burst=false;
+
+  function gem(x,y,r,rot,n,a){
+    ctx.save();ctx.translate(x,y);ctx.globalAlpha=a;
+    for(let i=0;i<n;i++){
+      const a0=rot+i/n*6.2832,a1=rot+(i+1)/n*6.2832,m=(a0+a1)/2;
+      const light=.5+.5*Math.cos(m-2.2),l=26+light*46;
+      ctx.fillStyle=`hsl(${40+light*8} 95% ${l}%)`;
+      ctx.beginPath();ctx.moveTo(0,0);
+      ctx.lineTo(Math.cos(a0)*r,Math.sin(a0)*r*.9);ctx.lineTo(Math.cos(a1)*r,Math.sin(a1)*r*.9);ctx.closePath();ctx.fill();
+    }
+    ctx.strokeStyle='rgba(255,240,170,.6)';ctx.lineWidth=1;
+    ctx.beginPath();for(let i=0;i<n;i++){const t=rot+i/n*6.2832;i?ctx.lineTo(Math.cos(t)*r,Math.sin(t)*r*.9):ctx.moveTo(Math.cos(t)*r,Math.sin(t)*r*.9)}ctx.closePath();ctx.stroke();
+    ctx.beginPath();for(let i=0;i<n;i++){const t=rot+i/n*6.2832;const px=Math.cos(t)*r*.45,py=Math.sin(t)*r*.4;i?ctx.lineTo(px,py):ctx.moveTo(px,py)}ctx.closePath();ctx.stroke();
+    ctx.restore();
+  }
+  function star(x,y,s,a){
+    ctx.save();ctx.translate(x,y);ctx.globalAlpha=a;ctx.fillStyle='#fff3b8';
+    ctx.beginPath();ctx.moveTo(0,-s);ctx.quadraticCurveTo(0,0,s,0);ctx.quadraticCurveTo(0,0,0,s);ctx.quadraticCurveTo(0,0,-s,0);ctx.quadraticCurveTo(0,0,0,-s);ctx.fill();ctx.restore();
+  }
+
+  const t0=performance.now();let last=t0;
+  function frame(now){
+    const t=(now-t0)/1000,dt=Math.min((now-last)/1000,.05);last=now;
+    if(t*1000>=DUR){finish();return}
+    const cx=W/2,cy=H*.46;
+    ctx.clearRect(0,0,W,H);
+
+    // ambient glow
+    const g0=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.max(W,H)*.5);
+    g0.addColorStop(0,`rgba(245,184,0,${.05+Math.min(t/3,1)*.1})`);g0.addColorStop(1,'rgba(245,184,0,0)');
+    ctx.fillStyle=g0;ctx.fillRect(0,0,W,H);
+
+    // phase 1: fall (0-1.8s) · phase 2: gather (1.8-3.2s)
+    const fall=Math.min(t,1.8),p=t<1.8?0:Math.min((t-1.8)/1.4,1),pe=ease(p);
+    gems.sort((a,b)=>a.z-b.z).forEach(g=>{
+      const fx=g.x*W+Math.sin(t*1.4+g.rot)*10*g.z, fy=g.y*H+g.vy*H*fall*.9;
+      if(p>0&&!g.frozen){g.fx=fx;g.fy=fy;g.frozen=true}
+      let x=fx,y=fy,s=1,a=.55+g.z*.45;
+      if(g.frozen){x=g.fx+(cx-g.fx)*pe;y=g.fy+(cy-g.fy)*pe;s=1-pe*.9;a*=1-pe*.7}
+      if(t>3.25)return;
+      gem(x,y,g.r*s,g.rot+t*g.vr,g.n,a);
+    });
+
+    // flash + shockwave + sparks at 3.2s
+    if(t>=3.2){
+      if(!burst){burst=true;for(let i=0;i<90;i++){const an=rnd(0,6.28),sp=rnd(80,420);
+        sparks.push({x:cx,y:cy,vx:Math.cos(an)*sp,vy:Math.sin(an)*sp,life:rnd(.7,1.5),age:0,s:rnd(2,6)})}}
+      const k=t-3.2;
+      const fl=Math.max(0,1-k/.6);
+      if(fl>0){const g=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.min(W,H)*.6*(.4+k));
+        g.addColorStop(0,`rgba(255,244,190,${.85*fl})`);g.addColorStop(1,'rgba(255,200,60,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H)}
+      ctx.strokeStyle=`rgba(255,215,94,${Math.max(0,.7-k*.5)})`;ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(cx,cy,k*Math.max(W,H)*.45,0,6.2832);ctx.stroke();
+      sparks.forEach(s=>{s.age+=dt;if(s.age>s.life)return;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vx*=.985;s.vy=s.vy*.985+30*dt;
+        star(s.x,s.y,s.s,1-s.age/s.life)});
+    }
+    raf=requestAnimationFrame(frame);
+  }
+  raf=requestAnimationFrame(frame);
+
+  document.getElementById('skip').addEventListener('click',e=>{e.stopPropagation();finish()});
+  intro.addEventListener('click',finish);
+  addEventListener('keydown',finish,{once:true});
+  setTimeout(finish,DUR+50);            // safety net
+})();
+</script>
+
+<!-- Live Data Loader for Contract Cards (Phase 6) -->
+<script>
+(async function loadLandingPrices() {
+  try {
+    const res = await fetch('data/auraspread_data.json');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data || !data.normalized_prices) return;
+
+    const latest = {};
+    data.normalized_prices.forEach(r => { latest[r.symbol] = r; });
+
+    const symMap = {
+      'GOLD M': 'GOLDM',
+      'GOLD TEN': 'GOLDTEN',
+      'GOLD GUINEA': 'GOLDGUINEA',
+      'GOLD PETAL': 'GOLDPETAL'
+    };
+
+    document.querySelectorAll('.box').forEach(box => {
+      const h3 = box.querySelector('h3');
+      if (!h3) return;
+      const cleanName = h3.textContent.replace(/\s+/g, ' ').trim();
+      const sym = symMap[cleanName];
+      if (sym && latest[sym]) {
+        const p = Math.round(latest[sym].norm_close).toLocaleString('en-IN');
+        const b = box.querySelector('b');
+        if (b) {
+          b.innerHTML = `₹${p}/10g <small style="display:block; font-size:12px; opacity:0.85; font-weight:400; color:var(--mute);">999 basis</small>`;
+        }
+      }
+    });
+  } catch (e) {
+    // Keep static fallback
+  }
+})();
+</script>
+</body>
+
+</html>

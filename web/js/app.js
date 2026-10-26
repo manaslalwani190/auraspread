@@ -1,3 +1,12 @@
+// Canonical Contract Series Colors — Phase 2 requirement:
+// GOLDM #f5b800, GOLDTEN #5b9bd5, GOLDGUINEA #3fbf9a, GOLDPETAL #c98a5a
+const CONTRACT_COLORS = {
+  GOLDM: '#f5b800',
+  GOLDTEN: '#5b9bd5',
+  GOLDGUINEA: '#3fbf9a',
+  GOLDPETAL: '#c98a5a'
+};
+
 /**
  * AuraSpread - The Assay Office Client Application
  * Institutional-grade relative-value monitoring for MCX gold contracts.
@@ -17,8 +26,17 @@
   const splash = document.getElementById('splash-screen');
   if (!splash) return;
 
-  // Skip entire animation if already seen this session
-  if (sessionStorage.getItem(SESSION_KEY)) {
+  const forceIntro = window.location.search.includes('intro=1');
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Reduced motion: completely remove splash immediately
+  if (prefersReduced) {
+    splash.remove();
+    return;
+  }
+
+  // Skip entire animation if already seen this session and not forced
+  if (!forceIntro && sessionStorage.getItem(SESSION_KEY)) {
     splash.remove();
     return;
   }
@@ -259,6 +277,90 @@
 
 })(); // ← IIFE ends here; everything above runs immediately on script parse
 
+// ── Centralized Indian Currency & Digit Grouping Formatter ────────────────
+function formatIndianCurrency(val, { decimals = 2, showSign = false } = {}) {
+  if (val === null || val === undefined || isNaN(val)) return '₹0.00';
+  const num = Number(val);
+  const sign = num > 0 ? (showSign ? '+' : '') : (num < 0 ? '-' : '');
+  const absFormatted = Math.abs(num).toLocaleString('en-IN', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  });
+  return `${sign}₹${absFormatted}`;
+}
+
+// ── Centralized Fair Value Calculation ─────────────────────────────────────
+// residual = rawSpread - carry
+// verdict: abs(residual) > roundTripFriction ? "Edge exceeds friction" : "Within friction band, no trade"
+function computeFairValue(normBase, normTarget, carryAdj, roundTripFriction) {
+  const rawSpread = normTarget - normBase;
+  const carry = carryAdj - normBase;
+  const residual = rawSpread - carry;
+  const absResidual = Math.abs(residual);
+  const friction = Number(roundTripFriction) || 35.0;
+  const edgeExceeds = absResidual > friction;
+  const verdictText = edgeExceeds ? 'Edge exceeds friction' : 'Within friction band, no trade';
+
+  return {
+    rawSpread,
+    carry,
+    residual,
+    absResidual,
+    friction,
+    edgeExceeds,
+    verdictText,
+    distFromFriction: absResidual - friction
+  };
+}
+
+// ── Centralized Data Claims Derivation ─────────────────────────────────────
+function getDerivedDataClaims(data) {
+  const meta = (data && data.meta) || {};
+  const prices = (data && data.normalized_prices) || [];
+  const start = meta.date_start || '2004-01-01';
+  const end = meta.date_end || '2026-10-01';
+  const startYear = parseInt(start.split('-')[0], 10) || 2004;
+  const endYear = parseInt(end.split('-')[0], 10) || 2026;
+  const years = Math.max(1, endYear - startYear + 1);
+  const sessions = meta.sessions || meta.trading_sessions || (prices.length > 0 ? new Set(prices.map(p => p.date)).size : 6260);
+  const contracts = (meta.contracts_tracked && meta.contracts_tracked.length) || meta.contracts || 4;
+  const pairs = (meta.pairs_tracked && meta.pairs_tracked.length) || meta.pairs || 6;
+
+  // Stale data check: compare date_end with today
+  const today = new Date();
+  const lastDate = new Date(end);
+  const diffMs = Math.max(0, today.setHours(0, 0, 0, 0) - lastDate.setHours(0, 0, 0, 0));
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+  let tradingDays = 0;
+  const cur = new Date(lastDate);
+  while (cur < today) {
+    cur.setDate(cur.getDate() + 1);
+    const day = cur.getDay();
+    if (day !== 0 && day !== 6) tradingDays++;
+  }
+  const isStale = tradingDays > 2;
+
+  return {
+    start,
+    end,
+    startYear,
+    endYear,
+    years,
+    sessions,
+    sessionsFormatted: sessions.toLocaleString('en-IN'),
+    contracts,
+    pairs,
+    rangeDisplay: `${start} → ${end}`,
+    rangeText: `${start} to ${end}`,
+    archiveLabel: `${years}-YEAR MCX ARCHIVE`,
+    provenanceSource: meta.data_source || `MCX Bhavcopy Local Archive (${startYear}–${endYear})`,
+    diffDays,
+    tradingDays,
+    isStale
+  };
+}
+
 // Application State
 const STATE = {
   data: null,
@@ -304,19 +406,23 @@ function hideChartSkeleton(chartId) {
 
 // Colors matching Assay Office CSS tokens
 function getThemeColors() {
-  const isParchment = document.documentElement.getAttribute('data-theme') === 'parchment';
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light' || document.documentElement.getAttribute('data-theme') === 'parchment';
   return {
-    bgCard: isParchment ? '#FAF6F0' : '#332C18',
-    bgPlot: isParchment ? '#EDE4DC' : '#2A2312',
-    bgPaper: isParchment ? '#FAF6F0' : '#2A2312',
-    textMain: isParchment ? '#1C1917' : '#F4EFE0',
-    textSecondary: isParchment ? '#3D3935' : '#C4B896',
-    textMuted: isParchment ? '#57524C' : '#8A7D5A',
-    accentGold: isParchment ? '#9E7310' : '#FFBE0B',
-    accentGoldBright: isParchment ? '#835C07' : '#FFD04D',
-    borderBronze: isParchment ? '#D1C5B6' : 'rgba(255, 190, 11, 0.2)',
-    copperNeg: isParchment ? '#B3381B' : '#E05A3A',
-    verdigrisPos: isParchment ? '#1F7360' : '#4EAD96',
+    bgCard: isLight ? '#fffdf6' : '#1a160b',
+    bgPlot: isLight ? '#faf6ea' : '#0d0c09',
+    bgPaper: isLight ? '#faf6ea' : '#0d0c09',
+    textMain: isLight ? '#1d1708' : '#f6f0df',
+    textSecondary: isLight ? '#5c5133' : '#b9ae92',
+    textMuted: isLight ? '#7d7152' : '#8a7f66',
+    accentGold: isLight ? '#b07a00' : '#f5b800',
+    accentGoldBright: isLight ? '#8a5f00' : '#ffd75e',
+    borderBronze: isLight ? 'rgba(120,85,0,0.2)' : 'rgba(245,184,0,0.22)',
+    copperNeg: isLight ? '#c24a33' : '#e8624a',
+    verdigrisPos: isLight ? '#1f8f6e' : '#3fbf9a',
+    cGoldm: '#f5b800',
+    cGoldten: '#5b9bd5',
+    cGoldguinea: '#3fbf9a',
+    cGoldpetal: '#c98a5a'
   };
 }
 
@@ -365,13 +471,15 @@ function setupScrollProgress() {
   const progressBar = document.getElementById('topProgressBar');
   if (!progressBar) return;
 
-  window.addEventListener('scroll', () => {
+  const updateProgress = () => {
     const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
     if (totalHeight > 0) {
       const progress = (window.scrollY / totalHeight) * 100;
       progressBar.style.width = `${Math.min(100, Math.max(0, progress))}%`;
     }
-  }, { passive: true });
+  };
+
+  window.addEventListener('scroll', throttle(updateProgress, 30), { passive: true });
 }
 
 function setupNavigation() {
@@ -406,7 +514,7 @@ function setupNavigation() {
     });
   };
 
-  window.addEventListener('scroll', updateActiveNav, { passive: true });
+  window.addEventListener('scroll', throttle(updateActiveNav, 60), { passive: true });
   updateActiveNav();
 }
 
@@ -445,35 +553,31 @@ function getInitialTheme() {
   return 'vault';
 }
 
-function applyTheme(isParchment, persist = true) {
-  STATE.isParchment = isParchment;
-  const themeName = isParchment ? 'parchment' : 'vault';
+function applyTheme(isLight, persist = true) {
+  STATE.isParchment = isLight;
+  const themeName = isLight ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', themeName);
-  document.documentElement.style.backgroundColor = isParchment ? '#F5EFEB' : '#2A2312';
-  document.body.style.backgroundColor = isParchment ? '#F5EFEB' : '#2A2312';
+  document.documentElement.style.removeProperty('background-color');
+  document.body.style.removeProperty('background-color');
 
-  // Sync Header Theme Buttons (Pill)
   const btnLight = document.getElementById('themeBtnLight');
   const btnDark = document.getElementById('themeBtnDark');
   if (btnLight && btnDark) {
-    btnLight.classList.toggle('active', isParchment);
-    btnLight.setAttribute('aria-checked', isParchment ? 'true' : 'false');
-    btnDark.classList.toggle('active', !isParchment);
-    btnDark.setAttribute('aria-checked', !isParchment ? 'true' : 'false');
+    btnLight.classList.toggle('active', isLight);
+    btnLight.setAttribute('aria-checked', isLight ? 'true' : 'false');
+    btnDark.classList.toggle('active', !isLight);
+    btnDark.setAttribute('aria-checked', !isLight ? 'true' : 'false');
   }
 
-  // Sync Sidebar & Mobile Drawer Toggles
   const themeToggle = document.getElementById('themeToggle');
   const mobileThemeToggle = document.getElementById('mobileThemeToggle');
-  if (themeToggle) themeToggle.checked = isParchment;
-  if (mobileThemeToggle) mobileThemeToggle.checked = isParchment;
+  if (themeToggle) themeToggle.checked = isLight;
+  if (mobileThemeToggle) mobileThemeToggle.checked = isLight;
 
   if (persist) {
     try {
       localStorage.setItem(THEME_STORAGE_KEY, themeName);
-    } catch (e) {
-      // storage unavailable
-    }
+    } catch (e) {}
   }
 
   reRenderActiveCharts();
@@ -1378,14 +1482,17 @@ function reRenderActiveCharts() {
 
 // ── 1. Status Bar & Hero Verdict & Animated Stats ─────────────────────────
 function renderStatusHeader() {
-  const { meta, normalized_prices } = STATE.data;
+  const { meta } = STATE.data;
   if (!meta) return;
+
+  const claims = getDerivedDataClaims(STATE.data);
 
   const sourceLabel = document.getElementById('dataSourceLabel');
   const rangeLabel = document.getElementById('dataRangeLabel');
   const footerSource = document.getElementById('footerSource');
   const footerTimestamp = document.getElementById('footerTimestamp');
   const badge = document.getElementById('dataBadge');
+  const badgeText = document.getElementById('dataBadgeText');
 
   const barDateRange = document.getElementById('barDateRange');
   const barSessions = document.getElementById('barSessions');
@@ -1393,50 +1500,76 @@ function renderStatusHeader() {
   const barPairs = document.getElementById('barPairs');
   const barLastDate = document.getElementById('barLastDate');
 
-  const uniqueDays = meta.sessions || meta.trading_sessions || ((normalized_prices && normalized_prices.length > 0)
-    ? new Set(normalized_prices.map(p => p.date)).size
-    : 4901);
+  if (sourceLabel) sourceLabel.textContent = claims.provenanceSource;
+  if (rangeLabel) rangeLabel.textContent = claims.rangeDisplay;
+  if (barDateRange) barDateRange.textContent = claims.rangeText;
+  if (barSessions) barSessions.textContent = claims.sessionsFormatted;
+  if (barContracts) barContracts.textContent = String(claims.contracts);
+  if (barPairs) barPairs.textContent = String(claims.pairs);
+  if (barLastDate) barLastDate.textContent = claims.end;
 
-  const displaySessions = uniqueDays >= 4000 ? '4,901+' : String(uniqueDays);
-  const displayRange = meta.date_range || '2004-01-01 to 2026-10-01';
-
-  if (sourceLabel) sourceLabel.textContent = meta.data_source || 'MCX Bhavcopy Local Archive (2004-2026)';
-  if (rangeLabel) rangeLabel.textContent = displayRange.replace(' to ', ' → ');
-  if (barDateRange) barDateRange.textContent = displayRange;
-  if (barSessions) barSessions.textContent = displaySessions;
-  if (barContracts) barContracts.textContent = '4';
-  if (barPairs) barPairs.textContent = '6';
-  if (barLastDate) barLastDate.textContent = meta.date_end || '2026-10-01';
-
-  // Live Data Badge (Requirement 1)
+  // Last Updated with clean spacing
   const liveUpdated = document.getElementById('liveUpdatedText');
-  if (liveUpdated) liveUpdated.textContent = `Last Updated: ${meta.date_end || '2026-10-01'}`;
-  const heroLiveDate = document.getElementById('heroLiveUpdatedDate');
-  if (heroLiveDate) heroLiveDate.textContent = meta.date_end || '2026-10-01';
+  const liveUpdatedBadge = document.getElementById('liveUpdatedBadge');
+  if (liveUpdated) {
+    liveUpdated.textContent = `Last Updated: ${claims.end}`;
+  }
 
-  // "Why This Matters" Sessions Count (Requirement 5)
+  // Stale data check: if > 2 trading days old, show amber notice and do not call stale data "Live"
+  const staleDataNotice = document.getElementById('staleDataNotice');
+  const navSignals = document.getElementById('nav-signals');
+  const signalsSectionLabel = document.getElementById('signalsSectionLabel');
+
+  if (claims.isStale) {
+    if (staleDataNotice) {
+      staleDataNotice.style.display = 'inline-flex';
+      staleDataNotice.textContent = `Data is ${claims.diffDays} days old`;
+      staleDataNotice.className = 'stale-notice-badge';
+    }
+    if (navSignals) {
+      navSignals.innerHTML = '<span class="nav-icon">⚡</span> Signals Desk';
+    }
+    if (signalsSectionLabel) {
+      signalsSectionLabel.textContent = 'Settlement Feed Screener';
+    }
+    if (liveUpdatedBadge) {
+      liveUpdatedBadge.classList.remove('live-badge');
+      liveUpdatedBadge.classList.add('settlement-badge');
+      const dot = liveUpdatedBadge.querySelector('.pulse-dot');
+      if (dot) {
+        dot.className = 'pulse-dot warn-dot';
+      }
+    }
+  }
+
+  // "Why This Matters" Sessions Count
   const whySessions = document.getElementById('whySessionsCount');
-  if (whySessions) whySessions.textContent = '4,901';
+  if (whySessions) whySessions.textContent = claims.sessionsFormatted;
 
-  // Footer Sessions and Date Range (Requirement 7)
+  // Footer Sessions and Date Range
   const footerSessions = document.getElementById('footerSessionsCount');
   const footerRange = document.getElementById('footerDateRange');
-  if (footerSessions) footerSessions.textContent = '4,901+';
+  if (footerSessions) footerSessions.textContent = claims.sessionsFormatted;
   if (footerRange) {
-    footerRange.textContent = '2004–2026';
+    footerRange.textContent = `${claims.startYear}–${claims.endYear}`;
   }
 
   // Multi-Contract Coverage Timeline Total
   const timelineTotal = document.getElementById('timelineTotalBadge');
-  if (timelineTotal) timelineTotal.textContent = '4,901+ Trading Sessions';
+  if (timelineTotal) timelineTotal.textContent = `${claims.sessionsFormatted} Trading Sessions`;
+
+  const timelineSubtitle = document.getElementById('timelineSubtitle');
+  if (timelineSubtitle) {
+    timelineSubtitle.textContent = `${claims.years}-Year Historical Archive (${claims.startYear}–${claims.endYear})`;
+  }
 
   // Hero Trading Days Description
   const statTileDaysDesc = document.getElementById('statTileDaysDesc');
   if (statTileDaysDesc) {
-    statTileDaysDesc.textContent = 'Nearly 2 decades of MCX Bhavcopy settlement data';
+    statTileDaysDesc.textContent = `${claims.years}-Year Deep Historical Archive (${claims.startYear}–${claims.endYear})`;
   }
 
-  if (footerSource) footerSource.textContent = meta.data_source || 'MCX Bhavcopy Local Archive (2004-2026)';
+  if (footerSource) footerSource.textContent = claims.provenanceSource;
   if (footerTimestamp) footerTimestamp.textContent = meta.generated || meta.generated_at;
 
   if (badge) {
@@ -1446,7 +1579,7 @@ function renderStatusHeader() {
       badge.title = 'Demonstration simulation dataset';
     } else {
       badge.className = 'status-badge real';
-      badge.innerHTML = '<span class="pulse-dot">●</span> 23-YEAR MCX ARCHIVE';
+      badge.innerHTML = `<span class="pulse-dot">●</span> ${claims.years}-YEAR MCX ARCHIVE`;
       badge.title = 'Verified local MCX Bhavcopy Archive (Click to inspect provenance)';
     }
   }
@@ -1457,16 +1590,17 @@ function renderStatusHeader() {
   const provSessions = document.getElementById('provSessions');
   const provRecords = document.getElementById('provRecords');
 
-  if (provSource) provSource.textContent = meta.data_source || 'MCX Bhavcopy Local Archive (2004-2026)';
-  if (provDateRange) provDateRange.textContent = displayRange;
-  if (provSessions) provSessions.textContent = '4,901+ Unique Sessions';
+  if (provSource) provSource.textContent = claims.provenanceSource;
+  if (provDateRange) provDateRange.textContent = claims.rangeText;
+  if (provSessions) provSessions.textContent = `${claims.sessionsFormatted} Unique Sessions`;
   if (provRecords) provRecords.textContent = `${(meta.total_records || 48422).toLocaleString('en-IN')} Rows`;
 }
 
 function renderVerdictCard() {
-  const { breakeven, meta, normalized_prices } = STATE.data;
+  const { breakeven, meta } = STATE.data;
   if (!breakeven) return;
 
+  const claims = getDerivedDataClaims(STATE.data);
   const pairs = Object.keys(breakeven);
   const surviving = pairs.filter(p => breakeven[p].edge_survives);
   const nSurviving = surviving.length;
@@ -1480,13 +1614,10 @@ function renderVerdictCard() {
   if (modelTagEl) {
     modelTagEl.textContent = (meta && meta.is_synthetic)
       ? 'SYNTHETIC MODEL (MCX CONTANGO CALIBRATION)'
-      : 'REAL MCX BHAVCOPY ARCHIVE';
+      : `${claims.years}-YEAR MCX BHAVCOPY ARCHIVE`;
   }
 
-  const nSessions = (normalized_prices && normalized_prices.length > 0)
-    ? new Set(normalized_prices.map(p => p.date)).size
-    : null;
-  const sessionText = nSessions !== null ? `${nSessions} trading sessions` : 'the historical window';
+  const sessionText = `${claims.sessionsFormatted} trading sessions`;
 
   if (nSurviving === 0) {
     if (headlineEl) headlineEl.textContent = 'NO PERSISTENT STATISTICAL EDGE SURVIVES REAL FRICTIONS';
@@ -1563,12 +1694,11 @@ function animateHeadlineStats() {
   const statPairs = document.getElementById('statTilePairs');
   const statEdge = document.getElementById('statTileEdge');
 
-  const { meta } = STATE.data;
-  const uniqueDays = 4901;
+  const claims = getDerivedDataClaims(STATE.data);
 
-  if (statDays) animateCountUp(statDays, uniqueDays, '', '+', 0, 1200);
-  if (statYears) animateCountUp(statYears, 23, '', '', 0, 1000);
-  if (statPairs) animateCountUp(statPairs, 6, '', '', 0, 1000);
+  if (statDays) animateCountUp(statDays, claims.sessions, '', '', 0, 1200);
+  if (statYears) animateCountUp(statYears, claims.years, '', '', 0, 1000);
+  if (statPairs) animateCountUp(statPairs, claims.pairs, '', '', 0, 1000);
   if (statEdge) animateCountUp(statEdge, 0, '₹', '', 0, 800);
 }
 
@@ -1593,22 +1723,25 @@ function renderIngotCards() {
 function updateBalanceScale() {
   if (!STATE.data) return;
 
+  const { residuals } = STATE.data;
   const pairKey = `${STATE.baseLeg}-${STATE.targetLeg}`;
   const reversePairKey = `${STATE.targetLeg}-${STATE.baseLeg}`;
-  
-  let resSeries = STATE.data.residuals[pairKey];
+
+  let resSeries = null;
   let isReversed = false;
 
-  if (!resSeries && STATE.data.residuals[reversePairKey]) {
-    resSeries = STATE.data.residuals[reversePairKey];
+  if (residuals && residuals[pairKey]) {
+    resSeries = residuals[pairKey];
+  } else if (residuals && residuals[reversePairKey]) {
+    resSeries = residuals[reversePairKey];
     isReversed = true;
   }
 
-  const panBaseName = document.getElementById('panBaseName');
-  const panTargetName = document.getElementById('panTargetName');
-  const panBasePrice = document.getElementById('panBasePrice');
-  const panTargetPrice = document.getElementById('panTargetPrice');
-  const scaleBeam = document.getElementById('scaleBeam');
+  const panBaseNameSvg = document.getElementById('panBaseNameSvg');
+  const panTargetNameSvg = document.getElementById('panTargetNameSvg');
+  const panBasePriceSvg = document.getElementById('panBasePriceSvg');
+  const panTargetPriceSvg = document.getElementById('panTargetPriceSvg');
+  const scaleBeamAssembly = document.getElementById('scaleBeamAssembly') || document.getElementById('scaleBeam');
 
   const valRawSpread = document.getElementById('valRawSpread');
   const valCarry = document.getElementById('valCarryAdjustment');
@@ -1617,16 +1750,24 @@ function updateBalanceScale() {
   const valCostSub = document.getElementById('valResidualCostCompare');
   const balanceTakeaway = document.getElementById('balanceTakeawayText');
 
-  panBaseName.textContent = `${STATE.baseLeg} (Carry Adj)`;
-  panTargetName.textContent = `${STATE.targetLeg}`;
+  if (panBaseNameSvg) panBaseNameSvg.textContent = `${STATE.baseLeg} (Carry Adj)`;
+  if (panTargetNameSvg) panTargetNameSvg.textContent = `${STATE.targetLeg}`;
+
+  // fallback DOM nodes if present
+  const panBaseName = document.getElementById('panBaseName');
+  const panTargetName = document.getElementById('panTargetName');
+  const panBasePrice = document.getElementById('panBasePrice');
+  const panTargetPrice = document.getElementById('panTargetPrice');
+  if (panBaseName) panBaseName.textContent = `${STATE.baseLeg} (Carry Adj)`;
+  if (panTargetName) panTargetName.textContent = `${STATE.targetLeg}`;
 
   if (!resSeries || !resSeries.length) {
-    panBasePrice.textContent = 'N/A';
-    panTargetPrice.textContent = 'N/A';
-    valRawSpread.textContent = '₹0.00';
-    valCarry.textContent = '₹0.00';
-    valResidual.textContent = '₹0.00';
-    scaleBeam.style.transform = 'rotate(0deg)';
+    if (panBasePriceSvg) panBasePriceSvg.textContent = 'N/A';
+    if (panTargetPriceSvg) panTargetPriceSvg.textContent = 'N/A';
+    if (valRawSpread) valRawSpread.textContent = '₹0.00';
+    if (valCarry) valCarry.textContent = '₹0.00';
+    if (valResidual) valResidual.textContent = '₹0.00';
+    if (scaleBeamAssembly) scaleBeamAssembly.style.transform = 'rotate(0deg)';
     if (balanceTakeaway) {
       balanceTakeaway.textContent = 'Identical or unsupported pair selected. Choose two distinct contracts to observe carry displacement.';
     }
@@ -1637,85 +1778,67 @@ function updateBalanceScale() {
   let normBase = latest.norm_base;
   let normTarget = latest.norm_target;
   let carryAdj = latest.carry_adj_base;
-  let residual = latest.residual || 0;
   let impliedCarry = latest.implied_carry || 0;
 
   if (isReversed) {
     normBase = latest.norm_target;
     normTarget = latest.norm_base;
     carryAdj = normBase;
-    residual = -residual;
   }
-
-  panBasePrice.textContent = `₹${carryAdj.toLocaleString('en-IN', { maximumFractionDigits: 1 })}`;
-  panTargetPrice.textContent = `₹${normTarget.toLocaleString('en-IN', { maximumFractionDigits: 1 })}`;
-
-  const rawDiff = normTarget - normBase;
-  const carryAmount = carryAdj - normBase;
-
-  valRawSpread.textContent = `₹${rawDiff >= 0 ? '+' : ''}${rawDiff.toFixed(2)}`;
-  valRawSpread.style.color = rawDiff >= 0 ? 'var(--verdigris-pos)' : 'var(--copper-neg)';
-
-  valCarry.textContent = `₹${carryAmount >= 0 ? '+' : ''}${carryAmount.toFixed(2)}`;
-  valCarrySub.textContent = `Daily rate: ₹${impliedCarry.toFixed(2)}/day`;
-
-  valResidual.textContent = `₹${residual >= 0 ? '+' : ''}${residual.toFixed(2)}`;
-  valResidual.style.color = Math.abs(residual) > 40 ? 'var(--accent-gold-bright)' : 'var(--text-primary)';
 
   const pairBe = (STATE.data.breakeven && (STATE.data.breakeven[pairKey] || STATE.data.breakeven[reversePairKey]));
   const estFriction = pairBe ? pairBe.estimated_cost : 35.0;
-  valCostSub.textContent = `Round-trip friction: ~₹${estFriction.toFixed(2)}/10g`;
 
-  // Distance from Friction & Status Badge
-  const absResidual = Math.abs(residual);
-  const distFromFriction = absResidual - estFriction;
-  const valFrictionDistance = document.getElementById('valFrictionDistance');
-  const badgeBalanceStatus = document.getElementById('badgeBalanceStatus');
+  const fv = computeFairValue(normBase, normTarget, carryAdj, estFriction);
 
-  if (valFrictionDistance) {
-    valFrictionDistance.textContent = `₹${distFromFriction >= 0 ? '+' : ''}${distFromFriction.toFixed(2)}`;
-    valFrictionDistance.style.color = distFromFriction >= 0 ? 'var(--copper-neg)' : 'var(--verdigris-pos)';
+  const basePriceFmt = formatIndianCurrency(carryAdj, { decimals: 1 });
+  const targetPriceFmt = formatIndianCurrency(normTarget, { decimals: 1 });
+
+  if (panBasePriceSvg) panBasePriceSvg.textContent = basePriceFmt;
+  if (panTargetPriceSvg) panTargetPriceSvg.textContent = targetPriceFmt;
+  if (panBasePrice) panBasePrice.textContent = basePriceFmt;
+  if (panTargetPrice) panTargetPrice.textContent = targetPriceFmt;
+
+  if (valRawSpread) {
+    valRawSpread.textContent = formatIndianCurrency(fv.rawSpread, { showSign: true });
+    valRawSpread.style.color = fv.rawSpread >= 0 ? 'var(--pos)' : 'var(--neg)';
   }
 
-  if (badgeBalanceStatus) {
-    if (distFromFriction < -10) {
-      badgeBalanceStatus.className = 'friction-status-badge below';
-      badgeBalanceStatus.textContent = 'BELOW FRICTION';
-    } else if (distFromFriction <= 5) {
-      badgeBalanceStatus.className = 'friction-status-badge borderline';
-      badgeBalanceStatus.textContent = 'BORDERLINE';
-    } else {
-      badgeBalanceStatus.className = 'friction-status-badge above';
-      badgeBalanceStatus.textContent = 'ABOVE FRICTION';
-    }
+  if (valCarry) {
+    valCarry.textContent = formatIndianCurrency(fv.carry, { showSign: true });
+  }
+  if (valCarrySub) {
+    valCarrySub.textContent = `Daily financing: ${formatIndianCurrency(impliedCarry)}/day`;
   }
 
-  // Tilt beam up to +/- 8 degrees based on residual
-  const tiltDeg = Math.max(-8, Math.min(8, (residual / 30) * 4));
-  scaleBeam.style.transform = `rotate(${tiltDeg}deg)`;
+  if (valResidual) {
+    valResidual.textContent = formatIndianCurrency(fv.residual, { showSign: true });
+    valResidual.style.color = fv.edgeExceeds ? 'var(--gold-hi)' : 'var(--ink)';
+  }
 
-  // Plain-English Compare Mode Takeaway
+  if (valCostSub) {
+    valCostSub.textContent = `Round-trip friction: ${formatIndianCurrency(fv.friction)}/10g`;
+  }
+
+  // Exact clamp requirement: clamp(residual / maxResidual, -1, 1) * 12deg with 600ms ease transition
+  const maxResidual = 40.0;
+  const ratio = Math.max(-1, Math.min(1, fv.residual / maxResidual));
+  const tiltDeg = ratio * 12.0;
+
+  if (scaleBeamAssembly) {
+    scaleBeamAssembly.style.transition = 'transform 600ms cubic-bezier(0.25, 1, 0.5, 1)';
+    scaleBeamAssembly.style.transform = `rotate(${tiltDeg.toFixed(2)}deg)`;
+  }
+
   if (balanceTakeaway) {
-    const rawFmt = Math.abs(rawDiff).toFixed(2);
-    const carryFmt = Math.abs(carryAmount).toFixed(2);
-    const resFmt = Math.abs(residual).toFixed(2);
-    const clearsFriction = absResidual >= estFriction;
-    const frictionText = `~₹${estFriction.toFixed(2)}/10g`;
+    const rawFmt = formatIndianCurrency(Math.abs(fv.rawSpread));
+    const carryFmt = formatIndianCurrency(Math.abs(fv.carry));
+    const resFmt = formatIndianCurrency(Math.abs(fv.residual));
+    const frictionFmt = formatIndianCurrency(fv.friction);
 
-    balanceTakeaway.innerHTML = `<strong>${STATE.targetLeg}</strong> trades at a <strong>₹${rawFmt}</strong> raw gap to <strong>${STATE.baseLeg}</strong>. Financing carry accounts for <strong>₹${carryFmt}</strong>, leaving an effective residual of <strong>₹${resFmt}</strong> which <strong>${clearsFriction ? 'exceeds' : 'fails to clear'}</strong> estimated round-trip frictions (${frictionText}).`;
-  }
-
-  // Text label: "GOLDGUINEA costs ₹555 more per 10g after carry adjustment — within normal friction band"
-  const frictionLabel = document.getElementById('balanceFrictionLabel');
-  const frictionTextEl = document.getElementById('balanceFrictionText');
-  if (frictionLabel && frictionTextEl) {
-    frictionLabel.style.display = 'flex';
-    const expensiveLeg = residual >= 0 ? STATE.targetLeg : STATE.baseLeg;
-    const absRes = Math.round(Math.abs(residual));
-    frictionTextEl.textContent = `${expensiveLeg} costs ₹${absRes.toLocaleString('en-IN')} more per 10g after carry adjustment — within normal friction band`;
+    balanceTakeaway.innerHTML = `<strong>${STATE.targetLeg}</strong> trades at a <strong>${rawFmt}</strong> raw gap to <strong>${STATE.baseLeg}</strong>. Financing carry accounts for <strong>${carryFmt}</strong>, leaving an effective residual of <strong>${resFmt}</strong>. <strong>${fv.verdictText}</strong> (friction: ${frictionFmt}/10g).`;
   }
 }
-
 // ── 3. Spread Heatmap: SVG-based Monthly Heatmap Grid ───────────────────────
 const HEATMAP_CANONICAL_PAIRS = [
   'GOLDM-GOLDTEN',
@@ -2236,10 +2359,9 @@ function renderTermStructureChart() {
   const traces = [];
 
   const symbols = ['GOLDM', 'GOLDTEN', 'GOLDGUINEA', 'GOLDPETAL'];
-  const colors = [c.accentGold, '#5A8DB8', c.verdigrisPos, '#B8825A'];
   const mode = STATE.curveViewMode || (STATE.showRawCurve ? 'raw' : 'normalized');
 
-  symbols.forEach((sym, idx) => {
+  symbols.forEach(sym => {
     const symCurve = curve.filter(r => r.symbol === sym);
     if (!symCurve.length) return;
 
@@ -2257,24 +2379,24 @@ function renderTermStructureChart() {
         return r.norm_close;
       });
     } else if (mode === 'carry') {
-      // Carry Adjusted Mode: Strip theoretical forward financing rate (~6.5% p.a.)
       yVals = currentSnapshot.map(r => {
         const carryCost = r.norm_close * 0.065 * (r.days_to_expiry / 365);
         return r.norm_close - carryCost;
       });
     } else {
-      // Normalized 999 standard
       yVals = currentSnapshot.map(r => r.norm_close);
     }
 
+    const symColor = CONTRACT_COLORS[sym] || c.accentGold;
+
     traces.push({
-      x: currentSnapshot.map(r => r.days_to_expiry),
+      x: currentSnapshot.map(r => `${r.days_to_expiry}d (${r.expiry ? r.expiry.slice(5) : ''})`),
       y: yVals,
       name: sym,
       type: 'scatter',
       mode: 'lines+markers',
-      line: { color: colors[idx], width: 3 },
-      marker: { size: 8, color: colors[idx] },
+      line: { color: symColor, width: 3 },
+      marker: { size: 8, color: symColor },
       customdata: currentSnapshot.map(r => {
         const rawQuote = sym === 'GOLDGUINEA' ? r.norm_close * 0.8 :
                          sym === 'GOLDPETAL' ? r.norm_close * 0.1 :
@@ -2284,7 +2406,7 @@ function renderTermStructureChart() {
       }),
       hovertemplate: `<b>%{data.name}</b><br>` +
                      `Trade Date: %{customdata[0]}<br>` +
-                     `Expiry Date: %{customdata[1]} (%{x}d to maturity)<br>` +
+                     `Expiry Date: %{customdata[1]} (%{x})<br>` +
                      `Raw MCX Quote: ₹%{customdata[2]:,.1f}<br>` +
                      `Normalized (999): ₹%{customdata[3]:,.1f}/10g<br>` +
                      `Est. Financing Carry: ₹%{customdata[4]:,.1f}/10g<extra></extra>`,
@@ -2300,22 +2422,19 @@ function renderTermStructureChart() {
   const layout = {
     paper_bgcolor: c.bgPaper,
     plot_bgcolor: c.bgPlot,
-    font: { color: c.textMain, family: 'Inter' },
-    margin: { l: 75, r: 30, t: 50, b: 120 },
-    legend: { orientation: 'h', y: 1.15, x: 0.1, font: { color: c.textMain } },
+    font: { color: c.textMain, family: 'Inter', size: 12 },
+    margin: { l: 75, r: 30, t: 50, b: 80 },
+    legend: { orientation: 'h', y: 1.15, x: 0.05, font: { color: c.textMain, size: 12 } },
     xaxis: {
-      title: 'Days to Expiry (Actual Contract Maturity)',
+      title: 'Days to Expiry & Tenor Label',
       gridcolor: c.borderBronze,
-      tickangle: -45,
-      ticksuffix: 'd',
-      tickfont: { family: 'JetBrains Mono', size: 10, color: c.textMuted },
-      nticks: 8,
+      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
       automargin: true,
     },
     yaxis: {
       title: yAxisTitle,
       gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 11, color: c.textMuted },
+      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
     },
   };
 
@@ -2335,44 +2454,93 @@ function renderDecompositionChart() {
   const rollDown = goldmDecomp.map(d => d.roll_down);
   const curveShift = goldmDecomp.map(d => d.curve_shift);
 
-  const traceRoll = {
-    x: dates,
-    y: rollDown,
-    name: 'Mechanical Roll-Down (Carrying Decay)',
-    type: 'bar',
-    marker: { color: c.copperNeg },
-    hovertemplate: 'Date: %{x}<br>Roll-down Decay: ₹%{y:.2f}<extra></extra>',
-  };
+  // Calculate statistics for outlier flagging (±3 standard deviations)
+  function getOutliers(vals) {
+    const mean = vals.reduce((a,b) => a+b, 0) / vals.length;
+    const variance = vals.reduce((a,b) => a + Math.pow(b - mean, 2), 0) / vals.length;
+    const std = Math.sqrt(variance) || 1;
+    return vals.map((v, i) => Math.abs(v - mean) > 3 * std ? { date: dates[i], val: v } : null).filter(Boolean);
+  }
 
+  const shiftOutliers = getOutliers(curveShift);
+  const rollOutliers = getOutliers(rollDown);
+
+  // Panel 1: Curve Shift (Market Move)
   const traceShift = {
     x: dates,
     y: curveShift,
-    name: 'Genuine Curve Shift (Market Move)',
+    name: 'Curve Shift (Market Move)',
     type: 'bar',
     marker: { color: c.verdigrisPos },
-    hovertemplate: 'Date: %{x}<br>Curve Shift: ₹%{y:.2f}<extra></extra>',
+    yaxis: 'y',
+    hovertemplate: 'Contract: GOLDM<br>Date: %{x}<br>Curve Shift: ₹%{y:.2f}<br>Component: Market Move<extra></extra>',
   };
 
+  // Panel 2: Roll-Down (Carrying Decay)
+  const traceRoll = {
+    x: dates,
+    y: rollDown,
+    name: 'Roll-Down Decay (Carry)',
+    type: 'bar',
+    marker: { color: c.copperNeg },
+    yaxis: 'y2',
+    hovertemplate: 'Contract: GOLDM<br>Date: %{x}<br>Roll-Down: ₹%{y:.2f}<br>Component: Carrying Decay<extra></extra>',
+  };
+
+  const traces = [traceShift, traceRoll];
+
+  // Outlier markers beyond ±3 std dev
+  if (shiftOutliers.length > 0) {
+    traces.push({
+      x: shiftOutliers.map(o => o.date),
+      y: shiftOutliers.map(o => o.val),
+      name: 'Shift Outlier (±3σ)',
+      type: 'scatter',
+      mode: 'markers',
+      yaxis: 'y',
+      marker: { color: c.accentGoldBright, size: 7, symbol: 'circle' },
+      hovertemplate: 'Outlier: check data<br>Date: %{x}<br>Val: ₹%{y:.2f}<extra></extra>',
+    });
+  }
+
+  if (rollOutliers.length > 0) {
+    traces.push({
+      x: rollOutliers.map(o => o.date),
+      y: rollOutliers.map(o => o.val),
+      name: 'Roll Outlier (±3σ)',
+      type: 'scatter',
+      mode: 'markers',
+      yaxis: 'y2',
+      marker: { color: c.accentGoldBright, size: 7, symbol: 'circle' },
+      hovertemplate: 'Outlier: check data<br>Date: %{x}<br>Val: ₹%{y:.2f}<extra></extra>',
+    });
+  }
+
   const layout = {
-    barmode: 'relative',
+    grid: { rows: 2, columns: 1, pattern: 'independent', roworder: 'top to bottom' },
     paper_bgcolor: c.bgPaper,
     plot_bgcolor: c.bgPlot,
-    font: { color: c.textMain, family: 'Inter' },
-    margin: { t: 20, r: 30, b: 60, l: 75 },
-    legend: { orientation: 'h', y: 1.15, x: 0.05, font: { color: c.textMain } },
+    font: { color: c.textMain, family: 'Inter', size: 12 },
+    margin: { t: 40, r: 30, b: 50, l: 75 },
+    legend: { orientation: 'h', y: 1.15, x: 0.05, font: { color: c.textMain, size: 12 } },
     xaxis: {
       type: 'date',
       gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 11, color: c.textMuted },
+      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
     },
     yaxis: {
-      title: 'Daily Change (INR / 10g)',
+      title: 'Shift (₹/10g)',
       gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 11, color: c.textMuted },
+      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
+    },
+    yaxis2: {
+      title: 'Roll-Down (₹/10g)',
+      gridcolor: c.borderBronze,
+      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
     },
   };
 
-  Plotly.react('decompositionChart', [traceRoll, traceShift], layout, { responsive: true, displayModeBar: false });
+  Plotly.react('decompositionChart', traces, layout, { responsive: true, displayModeBar: false });
   hideChartSkeleton('decompositionChart');
 }
 
@@ -2398,14 +2566,22 @@ function updateSignalAlerts() {
       if (!latestZ || latestZ.zscore === null) continue;
 
       const absZ = Math.abs(latestZ.zscore);
-      const absRes = latestRes && latestRes.residual !== null ? Math.abs(latestRes.residual) : 0;
+      let computedRes = 0;
+      if (latestRes) {
+        if (latestRes.norm_target !== undefined && latestRes.carry_adj_base !== undefined) {
+          computedRes = latestRes.norm_target - latestRes.carry_adj_base;
+        } else {
+          computedRes = latestRes.residual || 0;
+        }
+      }
+      const absRes = Math.abs(computedRes);
 
       if (absZ >= STATE.zCutoff && absRes >= STATE.costHurdle && !latestZ.in_blackout) {
         alerts.push({
           pair: pairKey,
           date: latestZ.date,
           zscore: latestZ.zscore,
-          residual: latestRes ? latestRes.residual : 0,
+          residual: computedRes,
           action: latestZ.zscore > 0 ? 'SELL SPREAD (Short Target / Long Base)' : 'BUY SPREAD (Long Target / Short Base)',
         });
       }
@@ -2421,24 +2597,14 @@ function updateSignalAlerts() {
     if (quietDot) quietDot.className = 'pulse-dot green-pulse';
 
     feed.innerHTML = `
-      <div class="quiet-day-card">
-        <div class="quiet-day-art">
-          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M50 15 L50 82" stroke="var(--accent-gold)" stroke-width="2.5" stroke-linecap="round"/>
-            <path d="M22 30 L78 30" stroke="var(--accent-gold-bright)" stroke-width="3" stroke-linecap="round"/>
-            <circle cx="50" cy="15" r="5" fill="var(--accent-gold)"/>
-            <path d="M22 30 L12 60 L32 60 Z" stroke="var(--accent-gold-dim)" stroke-width="1.5" fill="none"/>
-            <path d="M78 30 L68 60 L88 60 Z" stroke="var(--accent-gold-dim)" stroke-width="1.5" fill="none"/>
-            <path d="M35 85 L65 85" stroke="var(--border-bronze-light)" stroke-width="3" stroke-linecap="round"/>
-            <path d="M42 82 L58 82" stroke="var(--accent-gold-dim)" stroke-width="2" stroke-linecap="round"/>
-          </svg>
+      <div class="card quiet-day-card" style="text-align: center; padding: 32px 24px; max-width: 580px; margin: 0 auto; border: 1px solid var(--line);">
+        <div style="margin-bottom: 12px; color: var(--gold); display: flex; justify-content: center;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
         </div>
-        <h4 class="quiet-day-title">QUIET DAY &bull; Market in Equilibrium</h4>
-        <p class="quiet-day-desc">
-          Residual spreads across all 6 gold pairs sit safely inside trading friction hurdles (₹${STATE.costHurdle.toFixed(2)}) or below your &plusmn;${STATE.zCutoff.toFixed(1)}&sigma; cutoff. 
-          When edge is below crossing costs, the most profitable trade is no trade.
+        <h4 style="font-family: var(--font-heading); font-size: 18px; margin: 0 0 8px; color: var(--ink);">Quiet Day — Market in Equilibrium</h4>
+        <p style="font-size: 14px; color: var(--mute); line-height: 1.5; margin: 0;">
+          Residual spreads sit safely inside trading friction hurdles (₹${STATE.costHurdle.toFixed(2)}) or below your ±${STATE.zCutoff.toFixed(1)}σ cutoff. When edge is below crossing costs, no trade is the optimal trade.
         </p>
-        <span class="quiet-day-pill">Capital Preserved &bull; 0 Execution Friction Incurred</span>
       </div>
     `;
     return;
@@ -2458,7 +2624,7 @@ function updateSignalAlerts() {
     item.innerHTML = `
       <div class="alert-info">
         <h4>${alt.pair} &bull; ${alt.action}</h4>
-        <p>Residual: ₹${alt.residual >= 0 ? '+' : ''}${alt.residual.toFixed(2)}/10g &bull; Z-Score: ${alt.zscore >= 0 ? '+' : ''}${alt.zscore.toFixed(2)}σ &bull; ${alt.date}</p>
+        <p>Residual: ${formatIndianCurrency(alt.residual, { showSign: true })}/10g &bull; Z-Score: ${alt.zscore >= 0 ? '+' : ''}${alt.zscore.toFixed(2)}σ &bull; ${alt.date}</p>
       </div>
       <div>
         <span class="status-badge" style="background: var(--verdigris-pos-bg); color: var(--verdigris-pos); border: 1px solid var(--verdigris-pos);">
@@ -2543,8 +2709,8 @@ function renderDrawdownChart(eqData, c) {
   const statAvgDd = document.getElementById('statAvgDd');
   const statRecoveryWindow = document.getElementById('statRecoveryWindow');
 
-  if (statMaxDd) statMaxDd.textContent = maxDd > 0 ? `₹-${maxDd.toFixed(2)}` : '₹0.00';
-  if (statAvgDd) statAvgDd.textContent = avgDd > 0 ? `₹-${avgDd.toFixed(2)}` : '₹0.00';
+  if (statMaxDd) statMaxDd.textContent = maxDd > 0 ? formatIndianCurrency(-maxDd) : '₹0.00';
+  if (statAvgDd) statAvgDd.textContent = avgDd > 0 ? formatIndianCurrency(-avgDd) : '₹0.00';
   if (statRecoveryWindow) statRecoveryWindow.textContent = maxRecoveryStreak > 0 ? `${maxRecoveryStreak} Sessions` : '0 Sessions';
 
   const trace = {
@@ -2554,8 +2720,8 @@ function renderDrawdownChart(eqData, c) {
     type: 'scatter',
     mode: 'lines',
     fill: 'tozeroy',
-    fillcolor: 'rgba(224, 90, 58, 0.25)',
-    line: { color: c.copperNeg, width: 2 },
+    fillcolor: 'rgba(232, 98, 74, 0.25)',
+    line: { color: c.copperNeg, width: 1.5 },
     hovertemplate: 'Date: %{x}<br>Portfolio Drawdown: ₹%{y:,.2f}<extra></extra>',
   };
 
@@ -2567,12 +2733,12 @@ function renderDrawdownChart(eqData, c) {
     xaxis: {
       type: 'date',
       gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 10, color: c.textMuted },
+      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
     },
     yaxis: {
       title: 'Drawdown (INR)',
       gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 10, color: c.textMuted },
+      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
     },
   };
 
@@ -2676,7 +2842,7 @@ function renderEquityCurveChart() {
         mode: 'markers',
         marker: {
           symbol: 'diamond',
-          size: 9,
+          size: 12,
           color: c.accentGoldBright,
           line: { color: '#000', width: 1 },
         },
@@ -2695,19 +2861,19 @@ function renderEquityCurveChart() {
     xaxis: {
       type: 'date',
       gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 11, color: c.textMuted },
+      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
     },
     yaxis: {
       title: 'Cumulative P&L (INR)',
       gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 11, color: c.textMuted },
+      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
     },
     yaxis2: {
       title: 'Underlying Gold Move (%)',
       overlaying: 'y',
       side: 'right',
       showgrid: false,
-      tickfont: { family: 'JetBrains Mono', size: 10, color: c.textMuted },
+      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
     },
   };
 
@@ -2719,14 +2885,16 @@ function renderEquityCurveChart() {
 }
 
 // ── 7. Breakeven Gauge ────────────────────────────────────────────────────
+let currentBreakevenSort = { col: 'pair', asc: true };
+
 function renderBreakevenGrid() {
   const { breakeven, residuals } = STATE.data;
   if (!breakeven) return;
 
-  const grid = document.getElementById('breakevenGrid');
-  if (!grid) return;
-  grid.innerHTML = '';
+  const container = document.getElementById('breakevenGrid') || document.getElementById('breakevenTableCard');
+  if (!container) return;
 
+  const rows = [];
   for (const [pairKey, be] of Object.entries(breakeven)) {
     const survives = be.edge_survives;
     const resList = (residuals && residuals[pairKey]) || [];
@@ -2736,60 +2904,92 @@ function renderBreakevenGrid() {
       medianRes = vals[Math.floor(vals.length / 2)] || 0;
     }
 
-    const maxScale = Math.max(be.estimated_cost * 1.5, be.breakeven_cost * 1.2, medianRes * 1.2, 50);
-    const resPct = Math.min(100, Math.max(4, (medianRes / maxScale) * 100));
-    const bePct = Math.min(100, Math.max(4, (be.breakeven_cost / maxScale) * 100));
-    const costPct = Math.min(100, Math.max(4, (be.estimated_cost / maxScale) * 100));
-
-    let statusClass = 'not-covered';
-    let statusText = 'COST NOT COVERED';
-    if (survives) {
-      statusClass = 'covered';
-      statusText = 'COST COVERED';
-    } else if (be.margin >= -5) {
-      statusClass = 'borderline';
-      statusText = 'BORDERLINE';
-    }
-
-    const card = document.createElement('div');
-    card.className = 'breakeven-card';
-    card.innerHTML = `
-      <div class="breakeven-card-header">
-        <span class="be-pair-name">${pairKey}</span>
-        <span class="be-status-badge ${statusClass}">${statusText}</span>
-      </div>
-      
-      <div class="be-stat-row">
-        <span class="be-label">Expected Residual Spread:</span>
-        <span class="be-val">₹${medianRes.toFixed(2)}/10g</span>
-      </div>
-      <div class="be-progress-track">
-        <div class="be-fill-bar" style="width: ${resPct}%; background: var(--accent-gold);"></div>
-      </div>
-
-      <div class="be-stat-row">
-        <span class="be-label">Breakeven Friction Capacity:</span>
-        <span class="be-val" style="color: ${survives ? 'var(--verdigris-pos)' : 'var(--copper-neg)'};">₹${be.breakeven_cost.toFixed(2)}/10g</span>
-      </div>
-      <div class="be-progress-track">
-        <div class="be-fill-bar ${survives ? 'survives' : 'dies'}" style="width: ${bePct}%;"></div>
-      </div>
-
-      <div class="be-stat-row">
-        <span class="be-label">Actual Configured Friction:</span>
-        <span class="be-val">₹${be.estimated_cost.toFixed(2)}/10g</span>
-      </div>
-      <div class="be-progress-track">
-        <div class="be-fill-bar" style="width: ${costPct}%; background: var(--text-muted);"></div>
-      </div>
-
-      <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.85rem; padding-top: 0.5rem; border-top: 1px solid var(--border-bronze);">
-        Net margin per round-trip: <strong style="color: ${be.margin >= 0 ? 'var(--verdigris-pos)' : 'var(--copper-neg)'};">₹${be.margin.toFixed(2)} / 10g</strong> (999 equivalent)
-      </div>
-    `;
-    grid.appendChild(card);
+    rows.push({
+      pair: pairKey,
+      edge: medianRes,
+      breakeven: be.breakeven_cost,
+      actual: be.estimated_cost,
+      margin: be.margin,
+      survives: survives
+    });
   }
+
+  // Sort rows based on current sort state
+  const col = currentBreakevenSort.col;
+  const isAsc = currentBreakevenSort.asc;
+  rows.sort((a, b) => {
+    let valA = a[col];
+    let valB = b[col];
+    if (typeof valA === 'string') {
+      return isAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    }
+    return isAsc ? valA - valB : valB - valA;
+  });
+
+  const maxVal = Math.max(...rows.map(r => Math.max(r.breakeven, r.actual, r.edge, 50)));
+
+  let html = `
+    <div class="table-card cost-table-card" style="margin-top: 16px;">
+      <table class="cost-table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+          <tr style="position: sticky; top: 0; background: var(--bg-raised); z-index: 2;">
+            <th class="sortable" onclick="sortBreakevenTable('pair')" style="padding: 14px 16px; cursor: pointer; color: var(--gold); border-bottom: 1px solid var(--line-strong);">Pair ↕</th>
+            <th class="sortable" onclick="sortBreakevenTable('edge')" style="padding: 14px 16px; cursor: pointer; color: var(--gold); border-bottom: 1px solid var(--line-strong);">Expected Edge ↕</th>
+            <th class="sortable" onclick="sortBreakevenTable('breakeven')" style="padding: 14px 16px; cursor: pointer; color: var(--gold); border-bottom: 1px solid var(--line-strong);">Breakeven Friction ↕</th>
+            <th class="sortable" onclick="sortBreakevenTable('actual')" style="padding: 14px 16px; cursor: pointer; color: var(--gold); border-bottom: 1px solid var(--line-strong);">Actual Friction ↕</th>
+            <th style="padding: 14px 16px; color: var(--gold); border-bottom: 1px solid var(--line-strong); min-width: 160px;">Capacity vs Friction</th>
+            <th class="sortable" onclick="sortBreakevenTable('survives')" style="padding: 14px 16px; cursor: pointer; color: var(--gold); border-bottom: 1px solid var(--line-strong);">Verdict ↕</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  rows.forEach((r, idx) => {
+    const bePct = Math.min(100, Math.max(4, (r.breakeven / maxVal) * 100));
+    const tickPct = Math.min(100, Math.max(4, (r.actual / maxVal) * 100));
+    const survivesBadge = r.survives
+      ? '<span style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; background:rgba(63,191,154,0.15); border:1px solid var(--pos); color:var(--pos); font-family:var(--font-mono); font-size:12px; font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> survives</span>'
+      : '<span style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; background:rgba(232,98,74,0.15); border:1px solid var(--neg); color:var(--neg); font-family:var(--font-mono); font-size:12px; font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> fails</span>';
+
+    const bgZebra = idx % 2 === 0 ? 'transparent' : 'rgba(245, 184, 0, 0.025)';
+
+    html += `
+      <tr style="background: ${bgZebra}; border-bottom: 1px solid var(--line);">
+        <td style="padding: 14px 16px; font-weight: 600; color: var(--ink); font-family: var(--font-body);">${r.pair}</td>
+        <td style="padding: 14px 16px; font-family: var(--font-mono); color: var(--ink);">${formatIndianCurrency(r.edge)}/10g</td>
+        <td style="padding: 14px 16px; font-family: var(--font-mono); font-weight: 600; color: ${r.survives ? 'var(--pos)' : 'var(--neg)'};">${formatIndianCurrency(r.breakeven)}/10g</td>
+        <td style="padding: 14px 16px; font-family: var(--font-mono); color: var(--mute);">${formatIndianCurrency(r.actual)}/10g</td>
+        <td style="padding: 14px 16px;">
+          <div style="position: relative; width: 140px; height: 16px; background: rgba(245,184,0,0.1); border-radius: 4px; overflow: visible;" title="Breakeven: ${formatIndianCurrency(r.breakeven)} vs Actual: ${formatIndianCurrency(r.actual)}">
+            <div style="height: 100%; width: ${bePct}%; background: ${r.survives ? 'var(--pos)' : 'var(--neg)'}; border-radius: 4px; opacity: 0.85;"></div>
+            <div style="position: absolute; top: -3px; bottom: -3px; left: ${tickPct}%; width: 2px; background: var(--gold-hi); box-shadow: 0 0 3px rgba(0,0,0,0.8);" title="Actual Friction Hurdle: ${formatIndianCurrency(r.actual)}"></div>
+          </div>
+        </td>
+        <td style="padding: 14px 16px;">${survivesBadge}</td>
+      </tr>
+    `;
+  });
+
+  html += `
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  container.innerHTML = html;
 }
+
+function sortBreakevenTable(col) {
+  if (currentBreakevenSort.col === col) {
+    currentBreakevenSort.asc = !currentBreakevenSort.asc;
+  } else {
+    currentBreakevenSort.col = col;
+    currentBreakevenSort.asc = true;
+  }
+  renderBreakevenGrid();
+}
+window.sortBreakevenTable = sortBreakevenTable;
+
 
 // ── 8. Contract Calendar ──────────────────────────────────────────────────
 function renderCalendarTable() {
@@ -3255,12 +3455,13 @@ function copyQuantitativeSummary() {
     ? 'After costs, no persistent edge survives across MCX gold pairs.'
     : `Marginal edge survives on ${survivingCount} of ${totalPairs} pairs.`;
 
+  const claims = getDerivedDataClaims(STATE.data);
   const bestEdgeText = maxMargin !== null
-    ? (maxMargin > 0 ? `₹${maxMargin.toFixed(2)} / 10g` : `₹0.00 / 10g (Max margin: ₹${maxMargin.toFixed(2)})`)
+    ? (maxMargin > 0 ? `${formatIndianCurrency(maxMargin)} / 10g` : `₹0.00 / 10g (Max margin: ${formatIndianCurrency(maxMargin, { showSign: true })})`)
     : 'N/A';
 
   const estFriction = (breakeven && Object.values(breakeven).length > 0)
-    ? `~₹${Object.values(breakeven)[0].estimated_cost.toFixed(2)}`
+    ? `~${formatIndianCurrency(Object.values(breakeven)[0].estimated_cost)}`
     : 'N/A';
 
   const dataSourceText = (meta && meta.data_source) ? meta.data_source : 'MCX India / Fallback';
@@ -3269,7 +3470,7 @@ function copyQuantitativeSummary() {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Verdict: ${verdictSummary}
 Best Net Edge (After Costs): ${bestEdgeText}
-Actionable Signal Days: ${totalSignalDays} of ${nSessions} trading sessions
+Actionable Signal Days: ${totalSignalDays} of ${claims.sessionsFormatted} trading sessions
 Share Explained by Carry: 87.4% (Financing carry + purity differential)
 Estimated Round-Trip Friction: ${estFriction}
 Data Model: ${dataSourceText}

@@ -1,0 +1,182 @@
+/**
+ * AuraSpread Design System Tokens — Phase 2
+ * Single source of truth for color, typography, spacing, radius, shadow.
+ * Import this file first; components.css second; then css/style.css.
+ */
+
+/* ── Preconnect handled in HTML; @import here for Fraunces + Inter + JetBrains Mono ── */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,800;1,9..144,600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;600&display=swap');
+
+/* ════════════════════════════════════════════════════════════
+   DARK THEME (default)
+   ════════════════════════════════════════════════════════════ */
+:root {
+  /* ── Page surfaces ── */
+  --bg:         #0d0c09;        /* page */
+  --bg-raised:  #16130c;        /* sidebar, sticky header */
+  --card:       #1a160b;        /* cards default */
+  --card-hi:    #221c0d;        /* hovered / selected card */
+
+  /* ── Borders ── */
+  --line:        rgba(245, 184, 0, 0.22);
+  --line-strong: rgba(245, 184, 0, 0.45);
+
+  /* ── Text ── */
+  --ink:   #f6f0df;    /* primary text — 15:1 contrast on --bg */
+  --mute:  #b9ae92;    /* secondary text — 8:1 on --bg; hard floor for readable text */
+  --faint: #8a7f66;    /* decorative labels only — 4.6:1 */
+
+  /* ── Brand / key accent ── */
+  --gold:    #f5b800;   /* brand, active states, key numbers */
+  --gold-hi: #ffd75e;   /* highlights, heading accents */
+  --gold-lo: #a8770a;   /* subdued borders, gradients */
+
+  /* ── Semantic colours ── */
+  --pos:  #3fbf9a;   /* profit / edge survives */
+  --neg:  #e8624a;   /* loss / edge fails */
+  --warn: #e5a500;   /* stale data, caution */
+  --info: #5b9bd5;   /* neutral series */
+
+  /* ── Contract series canonical colours ── */
+  --c-goldm:    #f5b800;   /* GOLDM */
+  --c-goldten:  #5b9bd5;   /* GOLDTEN */
+  --c-goldguinea: #3fbf9a; /* GOLDGUINEA */
+  --c-goldpetal:  #c98a5a; /* GOLDPETAL */
+
+  /* ── Typography ── */
+  --font-heading: 'Fraunces', Georgia, serif;      /* wt 800 display / 600 sub-headings */
+  --font-body:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; /* wt 400 body / 500 UI labels */
+  --font-mono:    'JetBrains Mono', 'SF Mono', Consolas, monospace; /* wt 400 code / 600 numbers, tabular-nums */
+
+  /* ── Font size scale (hard rule: nothing below 12px) ── */
+  --fs-display: clamp(36px, 6vw, 72px);
+  --fs-h2:      clamp(26px, 3.4vw, 40px);
+  --fs-h3:      20px;
+  --fs-body:    16px;
+  --fs-small:   14px;
+  --fs-label:   12px;   /* minimum readable label — do NOT go lower */
+
+  /* ── Spacing scale: 4 | 8 | 12 | 16 | 24 | 32 | 48 | 72 ── */
+  --space-4:  4px;
+  --space-8:  8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-48: 48px;
+  --space-72: 72px;
+
+  /* ── Corner radius ── */
+  --radius-chip:  999px;   /* chips */
+  --radius-btn:   12px;    /* buttons */
+  --radius-card:  16px;    /* cards */
+  --radius-panel: 20px;    /* large panels */
+
+  /* ── Elevation / shadows ── */
+  --shadow:        0 1px 0 rgba(255,215,94,0.06) inset, 0 10px 30px rgba(0,0,0,0.35);
+  --shadow-strong: 0 1px 0 rgba(255,215,94,0.12) inset, 0 16px 40px rgba(0,0,0,0.55);
+
+  /* ── Focus ring ── */
+  --focus-ring: 0 0 0 2px var(--gold-hi);
+
+  /* ── Scrollbar ── */
+  scrollbar-color: #6b4f08 var(--bg);
+  scrollbar-width: thin;
+
+  /* ──────────────────────────────────────────────────────────────
+     BACKWARD-COMPATIBILITY ALIASES
+     (keep style.css running without mass-rewrite)
+     ────────────────────────────────────────────────────────────── */
+  --bg-primary:        var(--bg);
+  --bg-secondary:      var(--bg-raised);
+  --bg-card:           var(--card);
+  --bg-card-hover:     var(--card-hi);
+  --bg-glass:          rgba(22,19,12,0.94);
+  --text-primary:      var(--ink);
+  --text-secondary:    var(--mute);
+  --text-muted:        var(--faint);
+  --accent-gold:       var(--gold);
+  --accent-gold-bright:var(--gold-hi);
+  --accent-gold-dim:   var(--gold-lo);
+  --gold-hover:        var(--gold-hi);
+  --gold-glow:         rgba(245,184,0,0.25);
+  --gold-highlight:    rgba(245,184,0,0.12);
+  --border:            var(--line);
+  --border-bronze:     var(--line);
+  --border-bronze-light:var(--line-strong);
+  --border-gold:       var(--line-strong);
+  --copper-neg:        var(--neg);
+  --copper-neg-bg:     rgba(232,98,74,0.14);
+  --verdigris-pos:     var(--pos);
+  --verdigris-pos-bg:  rgba(63,191,154,0.14);
+  --shadow-vault:      var(--shadow);
+  --shadow-gold:       0 0 25px rgba(245,184,0,0.22);
+  --radius-chamfer:    var(--radius-btn);
+  --transition:        all 0.25s cubic-bezier(0.16,1,0.3,1);
+  --font-sans:         var(--font-body);
+  --font-serif:        var(--font-heading);
+}
+
+/* ════════════════════════════════════════════════════════════
+   LIGHT THEME  (data-theme="light" or "parchment")
+   ════════════════════════════════════════════════════════════ */
+[data-theme="light"],
+[data-theme="parchment"] {
+  --bg:         #faf6ea;
+  --bg-raised:  #f2ead4;
+  --card:       #fffdf6;
+  --card-hi:    #fff6dc;
+
+  --line:        rgba(120,85,0,0.20);
+  --line-strong: rgba(120,85,0,0.40);
+
+  --ink:   #1d1708;
+  --mute:  #5c5133;
+  --faint: #7d7152;
+
+  --gold:    #b07a00;
+  --gold-hi: #8a5f00;
+  --gold-lo: #d9a21a;
+
+  --pos:  #1f8f6e;
+  --neg:  #c24a33;
+  --warn: #b07a00;
+  --info: #2f6fa8;
+
+  --c-goldm:      #b07a00;
+  --c-goldten:    #2f6fa8;
+  --c-goldguinea: #1f8f6e;
+  --c-goldpetal:  #a66638;
+
+  --shadow:        0 1px 0 rgba(120,85,0,0.06) inset, 0 10px 30px rgba(0,0,0,0.08);
+  --shadow-strong: 0 1px 0 rgba(120,85,0,0.12) inset, 0 16px 40px rgba(0,0,0,0.14);
+
+  scrollbar-color: #b07a00 var(--bg-raised);
+
+  /* Light aliases (override dark ones automatically via cascade) */
+  --bg-glass: rgba(242,234,212,0.94);
+  --gold-glow: rgba(176,122,0,0.18);
+  --gold-highlight: rgba(176,122,0,0.10);
+  --copper-neg-bg: rgba(194,74,51,0.12);
+  --verdigris-pos-bg: rgba(31,143,110,0.12);
+  --shadow-vault: var(--shadow);
+  --shadow-gold:  0 0 20px rgba(176,122,0,0.15);
+}
+
+/* ── Global webkit scrollbar (Chrome / Edge / Safari) ─────── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: #6b4f08;
+  border-radius: var(--radius-chip);
+  border: 2px solid var(--bg);
+}
+[data-theme="light"]     ::-webkit-scrollbar-thumb,
+[data-theme="parchment"] ::-webkit-scrollbar-thumb {
+  background: #c8b99c;
+}
