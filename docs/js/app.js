@@ -408,6 +408,36 @@ function hideChartSkeleton(chartId) {
   chartEl.style.minHeight = '';
 }
 
+function showChartError(chartId, title, message, onRetry) {
+  const chartEl = document.getElementById(chartId);
+  if (!chartEl) return;
+  hideChartSkeleton(chartId);
+  const oldErr = chartEl.querySelector('.chart-error-placeholder');
+  if (oldErr) oldErr.remove();
+
+  const errDiv = document.createElement('div');
+  errDiv.className = 'chart-error-placeholder';
+  errDiv.style.cssText = 'position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; background: rgba(24, 38, 28, 0.6); border: 1px dashed var(--copper-neg, #FF6B6B); border-radius: 8px; z-index: 10;';
+  errDiv.innerHTML = `
+    <div style="font-size: 26px; margin-bottom: 8px;">⚠</div>
+    <strong style="color: var(--copper-neg, #FF6B6B); font-family: var(--font-heading, serif); font-size: 15px; margin-bottom: 6px;">${title}</strong>
+    <p style="color: var(--mute, #A8C77A); font-size: 12px; font-family: var(--font-mono, monospace); max-width: 420px; margin: 0 0 12px;">${message}</p>
+    ${onRetry ? '<button type="button" class="btn-assay btn-sm chart-retry-btn" style="cursor: pointer;">Retry</button>' : ''}
+  `;
+  if (onRetry) {
+    const btn = errDiv.querySelector('.chart-retry-btn');
+    if (btn) btn.onclick = onRetry;
+  }
+  chartEl.appendChild(errDiv);
+}
+
+function clearChartError(chartId) {
+  const chartEl = document.getElementById(chartId);
+  if (!chartEl) return;
+  const oldErr = chartEl.querySelector('.chart-error-placeholder');
+  if (oldErr) oldErr.remove();
+}
+
 // Colors matching Assay Office CSS tokens
 function getThemeColors() {
   const isLight = document.documentElement.getAttribute('data-theme') === 'light' || document.documentElement.getAttribute('data-theme') === 'parchment';
@@ -427,6 +457,17 @@ function getThemeColors() {
     cGoldten: isLight ? '#5C7461' : '#A8C77A',
     cGoldguinea: isLight ? '#1B7A3E' : '#4ADE80',
     cGoldpetal: isLight ? '#78350F' : '#F5F5E9'
+  };
+}
+
+function throttle(func, limit) {
+  let inThrottle = false;
+  return function(...args) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => { inThrottle = false; }, limit);
+    }
   };
 }
 
@@ -1408,6 +1449,9 @@ function renderAll() {
   updateSignalAlerts();
   generateKeyInsights();
   renderHeatmapChart();
+  renderSingleChart('termStructure');
+  renderSingleChart('decomposition');
+  renderSingleChart('equityCurves');
 }
 
 // ── Lazy Chart Rendering with IntersectionObserver ────────────────────────
@@ -1900,9 +1944,10 @@ function renderMonthlyHeatmap(data) {
   if (!container) return;
   if (!data) data = STATE.data;
   if (!data) {
-    // Data still loading; keep skeleton visible
+    showChartError('monthlyHeatmapWrap', 'Heatmap Data Unavailable', 'Dataset is not loaded yet.', () => renderMonthlyHeatmap(STATE.data));
     return;
   }
+  clearChartError('monthlyHeatmapWrap');
 
   try {
     const { heatmap, residuals } = data;
@@ -2421,196 +2466,237 @@ window.addEventListener('resize', () => {
 // ── 4. Carry & Curve Lab ──────────────────────────────────────────────────
 function renderTermStructureChart() {
   const chartEl = document.getElementById('termStructureChart');
-  if (!chartEl || !STATE.data || !STATE.data.curve) return;
+  if (!chartEl) return;
 
-  const { curve } = STATE.data;
-  const c = getThemeColors();
-  const traces = [];
-
-  const symbols = ['GOLDM', 'GOLDTEN', 'GOLDGUINEA', 'GOLDPETAL'];
-  const mode = STATE.curveViewMode || (STATE.showRawCurve ? 'raw' : 'normalized');
-
-  symbols.forEach(sym => {
-    const symCurve = curve.filter(r => r.symbol === sym);
-    if (!symCurve.length) return;
-
-    const latestDate = symCurve[symCurve.length - 1].date;
-    const currentSnapshot = symCurve.filter(r => r.date === latestDate).sort((a,b) => a.days_to_expiry - b.days_to_expiry);
-
-    if (!currentSnapshot.length) return;
-
-    let yVals = [];
-    if (mode === 'raw') {
-      yVals = currentSnapshot.map(r => {
-        if (sym === 'GOLDGUINEA') return r.norm_close * (8 / 10);
-        if (sym === 'GOLDPETAL') return r.norm_close / 10;
-        if (sym === 'GOLDM') return r.norm_close * (995 / 999);
-        return r.norm_close;
-      });
-    } else if (mode === 'carry') {
-      yVals = currentSnapshot.map(r => {
-        const carryCost = r.norm_close * 0.065 * (r.days_to_expiry / 365);
-        return r.norm_close - carryCost;
-      });
-    } else {
-      yVals = currentSnapshot.map(r => r.norm_close);
+  try {
+    if (typeof Plotly === 'undefined') {
+      setTimeout(renderTermStructureChart, 300);
+      return;
     }
 
-    const symColor = CONTRACT_COLORS[sym] || c.accentGold;
+    if (!STATE.data || !STATE.data.curve || !STATE.data.curve.length) {
+      showChartError('termStructureChart', 'Term Structure Unavailable', 'Curve dataset is empty or not loaded.', () => renderTermStructureChart());
+      return;
+    }
 
-    traces.push({
-      x: currentSnapshot.map(r => `${r.days_to_expiry}d (${r.expiry ? r.expiry.slice(5) : ''})`),
-      y: yVals,
-      name: sym,
-      type: 'scatter',
-      mode: 'lines+markers',
-      line: { color: symColor, width: 3 },
-      marker: { size: 8, color: symColor },
-      customdata: currentSnapshot.map(r => {
-        const rawQuote = sym === 'GOLDGUINEA' ? r.norm_close * 0.8 :
-                         sym === 'GOLDPETAL' ? r.norm_close * 0.1 :
-                         sym === 'GOLDM' ? r.norm_close * (995 / 999) : r.norm_close;
-        const carryCost = r.norm_close * 0.065 * (r.days_to_expiry / 365);
-        return [r.date, r.expiry, rawQuote, r.norm_close, carryCost];
-      }),
-      hovertemplate: `<b>%{data.name}</b><br>` +
-                     `Trade Date: %{customdata[0]}<br>` +
-                     `Expiry Date: %{customdata[1]} (%{x})<br>` +
-                     `Raw MCX Quote: ₹%{customdata[2]:,.1f}<br>` +
-                     `Normalized (999): ₹%{customdata[3]:,.1f}/10g<br>` +
-                     `Est. Financing Carry: ₹%{customdata[4]:,.1f}/10g<extra></extra>`,
+    clearChartError('termStructureChart');
+
+    const { curve } = STATE.data;
+    const c = getThemeColors();
+    const traces = [];
+
+    const symbols = ['GOLDM', 'GOLDTEN', 'GOLDGUINEA', 'GOLDPETAL'];
+    const mode = STATE.curveViewMode || (STATE.showRawCurve ? 'raw' : 'normalized');
+
+    symbols.forEach(sym => {
+      const symCurve = curve.filter(r => r.symbol === sym);
+      if (!symCurve.length) return;
+
+      const latestDate = symCurve[symCurve.length - 1].date;
+      const currentSnapshot = symCurve.filter(r => r.date === latestDate).sort((a,b) => a.days_to_expiry - b.days_to_expiry);
+
+      if (!currentSnapshot.length) return;
+
+      let yVals = [];
+      if (mode === 'raw') {
+        yVals = currentSnapshot.map(r => {
+          if (sym === 'GOLDGUINEA') return r.norm_close * (8 / 10);
+          if (sym === 'GOLDPETAL') return r.norm_close / 10;
+          if (sym === 'GOLDM') return r.norm_close * (995 / 999);
+          return r.norm_close;
+        });
+      } else if (mode === 'carry') {
+        yVals = currentSnapshot.map(r => {
+          const carryCost = r.norm_close * 0.065 * (r.days_to_expiry / 365);
+          return r.norm_close - carryCost;
+        });
+      } else {
+        yVals = currentSnapshot.map(r => r.norm_close);
+      }
+
+      const symColor = CONTRACT_COLORS[sym] || c.accentGold;
+
+      traces.push({
+        x: currentSnapshot.map(r => `${r.days_to_expiry}d (${r.expiry ? r.expiry.slice(5) : ''})`),
+        y: yVals,
+        name: sym,
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { color: symColor, width: 3 },
+        marker: { size: 8, color: symColor },
+        customdata: currentSnapshot.map(r => {
+          const rawQuote = sym === 'GOLDGUINEA' ? r.norm_close * 0.8 :
+                           sym === 'GOLDPETAL' ? r.norm_close * 0.1 :
+                           sym === 'GOLDM' ? r.norm_close * (995 / 999) : r.norm_close;
+          const carryCost = r.norm_close * 0.065 * (r.days_to_expiry / 365);
+          return [r.date, r.expiry, rawQuote, r.norm_close, carryCost];
+        }),
+        hovertemplate: `<b>%{data.name}</b><br>` +
+                       `Trade Date: %{customdata[0]}<br>` +
+                       `Expiry Date: %{customdata[1]} (%{x})<br>` +
+                       `Raw MCX Quote: ₹%{customdata[2]:,.1f}<br>` +
+                       `Normalized (999): ₹%{customdata[3]:,.1f}/10g<br>` +
+                       `Est. Financing Carry: ₹%{customdata[4]:,.1f}/10g<extra></extra>`,
+      });
     });
-  });
 
-  const yAxisTitle = mode === 'raw'
-    ? 'Raw MCX Quote (Unadjusted Nominal INR)'
-    : mode === 'carry'
-    ? 'Carry-Adjusted Spot Parity (₹/10g 999)'
-    : 'Standardized INR / 10g (999 Purity)';
+    const yAxisTitle = mode === 'raw'
+      ? 'Raw MCX Quote (Unadjusted Nominal INR)'
+      : mode === 'carry'
+      ? 'Carry-Adjusted Spot Parity (₹/10g 999)'
+      : 'Standardized INR / 10g (999 Purity)';
 
-  const layout = {
-    paper_bgcolor: c.bgPaper,
-    plot_bgcolor: c.bgPlot,
-    font: { color: c.textMain, family: 'Inter', size: 12 },
-    margin: { l: 75, r: 30, t: 50, b: 80 },
-    legend: { orientation: 'h', y: 1.15, x: 0.05, font: { color: c.textMain, size: 12 } },
-    xaxis: {
-      title: 'Days to Expiry & Tenor Label',
-      gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
-      automargin: true,
-    },
-    yaxis: {
-      title: yAxisTitle,
-      gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
-    },
-  };
+    const layout = {
+      paper_bgcolor: c.bgPaper,
+      plot_bgcolor: c.bgPlot,
+      font: { color: c.textMain, family: 'Inter', size: 12 },
+      margin: { l: 75, r: 30, t: 50, b: 80 },
+      legend: { orientation: 'h', y: 1.15, x: 0.05, font: { color: c.textMain, size: 12 } },
+      xaxis: {
+        title: 'Days to Expiry & Tenor Label',
+        gridcolor: c.borderBronze,
+        tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
+        automargin: true,
+      },
+      yaxis: {
+        title: yAxisTitle,
+        gridcolor: c.borderBronze,
+        tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
+      },
+    };
 
-  Plotly.react('termStructureChart', traces, layout, { responsive: true, displayModeBar: false });
-  hideChartSkeleton('termStructureChart');
+    Plotly.react('termStructureChart', traces, layout, { responsive: true, displayModeBar: false });
+    hideChartSkeleton('termStructureChart');
+    STATE.chartsRendered.termStructure = true;
+  } catch (err) {
+    console.error('Failed to render term structure chart:', err);
+    showChartError('termStructureChart', 'Term Structure Render Error', err.message, () => renderTermStructureChart());
+  }
 }
 
 function renderDecompositionChart() {
   const chartEl = document.getElementById('decompositionChart');
-  if (!chartEl || !STATE.data || !STATE.data.decomposition) return;
+  if (!chartEl) return;
 
-  const { decomposition } = STATE.data;
-  const c = getThemeColors();
-  const goldmDecomp = decomposition.filter(d => d.symbol === 'GOLDM').slice(-40);
+  try {
+    if (typeof Plotly === 'undefined') {
+      setTimeout(renderDecompositionChart, 300);
+      return;
+    }
 
-  const dates = goldmDecomp.map(d => d.date);
-  const rollDown = goldmDecomp.map(d => d.roll_down);
-  const curveShift = goldmDecomp.map(d => d.curve_shift);
+    if (!STATE.data || !STATE.data.decomposition || !STATE.data.decomposition.length) {
+      showChartError('decompositionChart', 'Price Decomposition Unavailable', 'Decomposition dataset is empty or not loaded.', () => renderDecompositionChart());
+      return;
+    }
 
-  // Calculate statistics for outlier flagging (±3 standard deviations)
-  function getOutliers(vals) {
-    const mean = vals.reduce((a,b) => a+b, 0) / vals.length;
-    const variance = vals.reduce((a,b) => a + Math.pow(b - mean, 2), 0) / vals.length;
-    const std = Math.sqrt(variance) || 1;
-    return vals.map((v, i) => Math.abs(v - mean) > 3 * std ? { date: dates[i], val: v } : null).filter(Boolean);
-  }
+    clearChartError('decompositionChart');
 
-  const shiftOutliers = getOutliers(curveShift);
-  const rollOutliers = getOutliers(rollDown);
+    const { decomposition } = STATE.data;
+    const c = getThemeColors();
+    const goldmDecomp = decomposition.filter(d => d.symbol === 'GOLDM').slice(-40);
 
-  // Panel 1: Curve Shift (Market Move)
-  const traceShift = {
-    x: dates,
-    y: curveShift,
-    name: 'Curve Shift (Market Move)',
-    type: 'bar',
-    marker: { color: c.verdigrisPos },
-    yaxis: 'y',
-    hovertemplate: 'Contract: GOLDM<br>Date: %{x}<br>Curve Shift: ₹%{y:.2f}<br>Component: Market Move<extra></extra>',
-  };
+    if (!goldmDecomp.length) {
+      showChartError('decompositionChart', 'No Data for GOLDM', 'No recent decomposition records found for contract GOLDM.');
+      return;
+    }
 
-  // Panel 2: Roll-Down (Carrying Decay)
-  const traceRoll = {
-    x: dates,
-    y: rollDown,
-    name: 'Roll-Down Decay (Carry)',
-    type: 'bar',
-    marker: { color: c.copperNeg },
-    yaxis: 'y2',
-    hovertemplate: 'Contract: GOLDM<br>Date: %{x}<br>Roll-Down: ₹%{y:.2f}<br>Component: Carrying Decay<extra></extra>',
-  };
+    const dates = goldmDecomp.map(d => d.date);
+    const rollDown = goldmDecomp.map(d => d.roll_down);
+    const curveShift = goldmDecomp.map(d => d.curve_shift);
 
-  const traces = [traceShift, traceRoll];
+    // Calculate statistics for outlier flagging (±3 standard deviations)
+    function getOutliers(vals) {
+      const mean = vals.reduce((a,b) => a+b, 0) / vals.length;
+      const variance = vals.reduce((a,b) => a + Math.pow(b - mean, 2), 0) / vals.length;
+      const std = Math.sqrt(variance) || 1;
+      return vals.map((v, i) => Math.abs(v - mean) > 3 * std ? { date: dates[i], val: v } : null).filter(Boolean);
+    }
 
-  // Outlier markers beyond ±3 std dev
-  if (shiftOutliers.length > 0) {
-    traces.push({
-      x: shiftOutliers.map(o => o.date),
-      y: shiftOutliers.map(o => o.val),
-      name: 'Shift Outlier (±3σ)',
-      type: 'scatter',
-      mode: 'markers',
+    const shiftOutliers = getOutliers(curveShift);
+    const rollOutliers = getOutliers(rollDown);
+
+    // Panel 1: Curve Shift (Market Move)
+    const traceShift = {
+      x: dates,
+      y: curveShift,
+      name: 'Curve Shift (Market Move)',
+      type: 'bar',
+      marker: { color: c.verdigrisPos },
       yaxis: 'y',
-      marker: { color: c.accentGoldBright, size: 7, symbol: 'circle' },
-      hovertemplate: 'Outlier: check data<br>Date: %{x}<br>Val: ₹%{y:.2f}<extra></extra>',
-    });
-  }
+      hovertemplate: 'Contract: GOLDM<br>Date: %{x}<br>Curve Shift: ₹%{y:.2f}<br>Component: Market Move<extra></extra>',
+    };
 
-  if (rollOutliers.length > 0) {
-    traces.push({
-      x: rollOutliers.map(o => o.date),
-      y: rollOutliers.map(o => o.val),
-      name: 'Roll Outlier (±3σ)',
-      type: 'scatter',
-      mode: 'markers',
+    // Panel 2: Roll-Down (Carrying Decay)
+    const traceRoll = {
+      x: dates,
+      y: rollDown,
+      name: 'Roll-Down Decay (Carry)',
+      type: 'bar',
+      marker: { color: c.copperNeg },
       yaxis: 'y2',
-      marker: { color: c.accentGoldBright, size: 7, symbol: 'circle' },
-      hovertemplate: 'Outlier: check data<br>Date: %{x}<br>Val: ₹%{y:.2f}<extra></extra>',
-    });
+      hovertemplate: 'Contract: GOLDM<br>Date: %{x}<br>Roll-Down: ₹%{y:.2f}<br>Component: Carrying Decay<extra></extra>',
+    };
+
+    const traces = [traceShift, traceRoll];
+
+    // Outlier markers beyond ±3 std dev
+    if (shiftOutliers.length > 0) {
+      traces.push({
+        x: shiftOutliers.map(o => o.date),
+        y: shiftOutliers.map(o => o.val),
+        name: 'Shift Outlier (±3σ)',
+        type: 'scatter',
+        mode: 'markers',
+        yaxis: 'y',
+        marker: { color: c.accentGoldBright, size: 7, symbol: 'circle' },
+        hovertemplate: 'Outlier: check data<br>Date: %{x}<br>Val: ₹%{y:.2f}<extra></extra>',
+      });
+    }
+
+    if (rollOutliers.length > 0) {
+      traces.push({
+        x: rollOutliers.map(o => o.date),
+        y: rollOutliers.map(o => o.val),
+        name: 'Roll Outlier (±3σ)',
+        type: 'scatter',
+        mode: 'markers',
+        yaxis: 'y2',
+        marker: { color: c.accentGoldBright, size: 7, symbol: 'circle' },
+        hovertemplate: 'Outlier: check data<br>Date: %{x}<br>Val: ₹%{y:.2f}<extra></extra>',
+      });
+    }
+
+    const layout = {
+      grid: { rows: 2, columns: 1, pattern: 'independent', roworder: 'top to bottom' },
+      paper_bgcolor: c.bgPaper,
+      plot_bgcolor: c.bgPlot,
+      font: { color: c.textMain, family: 'Inter', size: 12 },
+      margin: { t: 40, r: 30, b: 50, l: 75 },
+      legend: { orientation: 'h', y: 1.15, x: 0.05, font: { color: c.textMain, size: 12 } },
+      xaxis: {
+        type: 'date',
+        gridcolor: c.borderBronze,
+        tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
+      },
+      yaxis: {
+        title: 'Shift (₹/10g)',
+        gridcolor: c.borderBronze,
+        tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
+      },
+      yaxis2: {
+        title: 'Roll-Down (₹/10g)',
+        gridcolor: c.borderBronze,
+        tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
+      },
+    };
+
+    Plotly.react('decompositionChart', traces, layout, { responsive: true, displayModeBar: false });
+    hideChartSkeleton('decompositionChart');
+    STATE.chartsRendered.decomposition = true;
+  } catch (err) {
+    console.error('Failed to render decomposition chart:', err);
+    showChartError('decompositionChart', 'Decomposition Render Error', err.message, () => renderDecompositionChart());
   }
-
-  const layout = {
-    grid: { rows: 2, columns: 1, pattern: 'independent', roworder: 'top to bottom' },
-    paper_bgcolor: c.bgPaper,
-    plot_bgcolor: c.bgPlot,
-    font: { color: c.textMain, family: 'Inter', size: 12 },
-    margin: { t: 40, r: 30, b: 50, l: 75 },
-    legend: { orientation: 'h', y: 1.15, x: 0.05, font: { color: c.textMain, size: 12 } },
-    xaxis: {
-      type: 'date',
-      gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
-    },
-    yaxis: {
-      title: 'Shift (₹/10g)',
-      gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
-    },
-    yaxis2: {
-      title: 'Roll-Down (₹/10g)',
-      gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
-    },
-  };
-
-  Plotly.react('decompositionChart', traces, layout, { responsive: true, displayModeBar: false });
-  hideChartSkeleton('decompositionChart');
 }
 
 // ── 5. Signal Desk (With Illustrated Calm Quiet Day State) ─────────────────
@@ -2746,211 +2832,259 @@ function updateBacktestMetrics() {
 
 function renderDrawdownChart(eqData, c) {
   const ddEl = document.getElementById('drawdownChart');
-  if (!ddEl || !eqData) return;
+  if (!ddEl) return;
 
-  const ddSeries = eqData.drawdown || [];
-  const dates = eqData.dates || [];
-
-  // Compute stats: Max DD, Avg DD, Recovery Window
-  let maxDd = 0;
-  let sumDd = 0;
-  let nonZeroCount = 0;
-  let curRecoveryStreak = 0;
-  let maxRecoveryStreak = 0;
-
-  for (let i = 0; i < ddSeries.length; i++) {
-    const val = ddSeries[i]; // val is <= 0
-    const absVal = Math.abs(val);
-    if (absVal > maxDd) maxDd = absVal;
-    if (absVal > 0) {
-      sumDd += absVal;
-      nonZeroCount++;
-      curRecoveryStreak++;
-      if (curRecoveryStreak > maxRecoveryStreak) maxRecoveryStreak = curRecoveryStreak;
-    } else {
-      curRecoveryStreak = 0;
+  try {
+    if (typeof Plotly === 'undefined') {
+      setTimeout(() => renderDrawdownChart(eqData, c), 300);
+      return;
     }
+
+    if (!eqData || !eqData.dates || !eqData.dates.length) {
+      showChartError('drawdownChart', 'Drawdown Data Unavailable', 'No drawdown history found for the active pair.');
+      const statMaxDd = document.getElementById('statMaxDd');
+      const statAvgDd = document.getElementById('statAvgDd');
+      const statRecoveryWindow = document.getElementById('statRecoveryWindow');
+      if (statMaxDd) statMaxDd.textContent = 'N/A';
+      if (statAvgDd) statAvgDd.textContent = 'N/A';
+      if (statRecoveryWindow) statRecoveryWindow.textContent = 'N/A';
+      return;
+    }
+
+    clearChartError('drawdownChart');
+    if (!c) c = getThemeColors();
+
+    const ddSeries = eqData.drawdown || [];
+    const dates = eqData.dates || [];
+
+    // Compute stats: Max DD, Avg DD, Recovery Window
+    let maxDd = 0;
+    let sumDd = 0;
+    let nonZeroCount = 0;
+    let curRecoveryStreak = 0;
+    let maxRecoveryStreak = 0;
+
+    for (let i = 0; i < ddSeries.length; i++) {
+      const val = ddSeries[i]; // val is <= 0
+      const absVal = Math.abs(val);
+      if (absVal > maxDd) maxDd = absVal;
+      if (absVal > 0) {
+        sumDd += absVal;
+        nonZeroCount++;
+        curRecoveryStreak++;
+        if (curRecoveryStreak > maxRecoveryStreak) maxRecoveryStreak = curRecoveryStreak;
+      } else {
+        curRecoveryStreak = 0;
+      }
+    }
+
+    const avgDd = nonZeroCount > 0 ? (sumDd / nonZeroCount) : 0;
+
+    const statMaxDd = document.getElementById('statMaxDd');
+    const statAvgDd = document.getElementById('statAvgDd');
+    const statRecoveryWindow = document.getElementById('statRecoveryWindow');
+
+    if (statMaxDd) statMaxDd.textContent = maxDd > 0 ? formatIndianCurrency(-maxDd) : '₹0.00';
+    if (statAvgDd) statAvgDd.textContent = avgDd > 0 ? formatIndianCurrency(-avgDd) : '₹0.00';
+    if (statRecoveryWindow) statRecoveryWindow.textContent = maxRecoveryStreak > 0 ? `${maxRecoveryStreak} Sessions` : '0 Sessions';
+
+    const trace = {
+      x: dates,
+      y: ddSeries,
+      name: 'Underwater Drawdown',
+      type: 'scatter',
+      mode: 'lines',
+      fill: 'tozeroy',
+      fillcolor: 'rgba(255, 107, 107, 0.22)',
+      line: { color: c.copperNeg, width: 1.5 },
+      hovertemplate: 'Date: %{x}<br>Portfolio Drawdown: ₹%{y:,.2f}<extra></extra>',
+    };
+
+    const layout = {
+      paper_bgcolor: c.bgPaper,
+      plot_bgcolor: c.bgPlot,
+      font: { color: c.textMain, family: 'Inter' },
+      margin: { t: 15, r: 30, b: 45, l: 80 },
+      xaxis: {
+        type: 'date',
+        gridcolor: c.borderBronze,
+        tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
+      },
+      yaxis: {
+        title: 'Drawdown (INR)',
+        gridcolor: c.borderBronze,
+        tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
+      },
+    };
+
+    Plotly.react('drawdownChart', [trace], layout, { responsive: true, displayModeBar: false });
+    hideChartSkeleton('drawdownChart');
+    STATE.chartsRendered.drawdown = true;
+  } catch (err) {
+    console.error('Failed to render drawdown chart:', err);
+    showChartError('drawdownChart', 'Drawdown Render Error', err.message);
   }
-
-  const avgDd = nonZeroCount > 0 ? (sumDd / nonZeroCount) : 0;
-
-  const statMaxDd = document.getElementById('statMaxDd');
-  const statAvgDd = document.getElementById('statAvgDd');
-  const statRecoveryWindow = document.getElementById('statRecoveryWindow');
-
-  if (statMaxDd) statMaxDd.textContent = maxDd > 0 ? formatIndianCurrency(-maxDd) : '₹0.00';
-  if (statAvgDd) statAvgDd.textContent = avgDd > 0 ? formatIndianCurrency(-avgDd) : '₹0.00';
-  if (statRecoveryWindow) statRecoveryWindow.textContent = maxRecoveryStreak > 0 ? `${maxRecoveryStreak} Sessions` : '0 Sessions';
-
-  const trace = {
-    x: dates,
-    y: ddSeries,
-    name: 'Underwater Drawdown',
-    type: 'scatter',
-    mode: 'lines',
-    fill: 'tozeroy',
-    fillcolor: 'rgba(255, 107, 107, 0.22)',
-    line: { color: c.copperNeg, width: 1.5 },
-    hovertemplate: 'Date: %{x}<br>Portfolio Drawdown: ₹%{y:,.2f}<extra></extra>',
-  };
-
-  const layout = {
-    paper_bgcolor: c.bgPaper,
-    plot_bgcolor: c.bgPlot,
-    font: { color: c.textMain, family: 'Inter' },
-    margin: { t: 15, r: 30, b: 45, l: 80 },
-    xaxis: {
-      type: 'date',
-      gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
-    },
-    yaxis: {
-      title: 'Drawdown (INR)',
-      gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
-    },
-  };
-
-  Plotly.react('drawdownChart', [trace], layout, { responsive: true, displayModeBar: false });
-  hideChartSkeleton('drawdownChart');
 }
 
 function renderEquityCurveChart() {
   const chartEl = document.getElementById('equityCurvesChart');
-  if (!chartEl || !STATE.data || !STATE.data.equity_curves) return;
+  if (!chartEl) return;
 
-  const { equity_curves, normalized_prices, trades } = STATE.data;
-  const eqData = equity_curves[STATE.activePair];
-  if (!eqData || !eqData.dates.length) return;
-
-  const c = getThemeColors();
-  const traces = [];
-
-  // 1. Gross Equity
-  traces.push({
-    x: eqData.dates,
-    y: eqData.equity_gross,
-    name: 'Gross P&L (Paper Frictionless)',
-    type: 'scatter',
-    mode: 'lines',
-    line: { color: c.accentGold, width: 2, dash: 'dot' },
-    hovertemplate: 'Gross P&L: ₹%{y:,.0f}<extra></extra>',
-  });
-
-  // 2. Net Equity
-  traces.push({
-    x: eqData.dates,
-    y: eqData.equity_net,
-    name: 'Net P&L (After Costs & Slippage)',
-    type: 'scatter',
-    mode: 'lines',
-    line: { color: c.copperNeg, width: 3 },
-    hovertemplate: 'Net P&L: ₹%{y:,.0f}<extra></extra>',
-  });
-
-  // 3. Gold-Neutral Equity
-  traces.push({
-    x: eqData.dates,
-    y: eqData.equity_gold_neutral,
-    name: 'Gold-Neutral P&L (Beta Hedged)',
-    type: 'scatter',
-    mode: 'lines',
-    line: { color: c.verdigrisPos, width: 2 },
-    hovertemplate: 'Gold-Neutral: ₹%{y:,.0f}<extra></extra>',
-  });
-
-  // 4. Gold Benchmark Overlay
-  if (STATE.showGoldImpact && normalized_prices) {
-    const goldSeries = normalized_prices.filter(p => p.symbol === 'GOLDM' && eqData.dates.includes(p.date));
-    if (goldSeries.length) {
-      const basePrice = goldSeries[0].norm_close;
-      const normalizedGold = goldSeries.map(p => ((p.norm_close - basePrice) / basePrice) * 100);
-      traces.push({
-        x: goldSeries.map(p => p.date),
-        y: normalizedGold,
-        name: 'MCX Gold Benchmark Return (%)',
-        type: 'scatter',
-        mode: 'lines',
-        yaxis: 'y2',
-        line: { color: 'rgba(255, 190, 11, 0.4)', width: 1.5 },
-        hovertemplate: 'Gold Return: %{y:.2f}%<extra></extra>',
-      });
+  try {
+    if (typeof Plotly === 'undefined') {
+      setTimeout(renderEquityCurveChart, 300);
+      return;
     }
-  }
 
-  // 5. Trade Execution Event Markers
-  const pairTrades = (trades && trades[STATE.activePair]) || [];
-  if (pairTrades.length > 0) {
-    const tradeX = [];
-    const tradeY = [];
-    const tradeHover = [];
-    const dateToNet = new Map(eqData.dates.map((d, i) => [d, eqData.equity_net[i]]));
+    if (!STATE.data || !STATE.data.equity_curves) {
+      showChartError('equityCurvesChart', 'Equity Curves Unavailable', 'Backtest equity dataset is missing or not loaded.', () => renderEquityCurveChart());
+      showChartError('drawdownChart', 'Drawdown Data Unavailable', 'Backtest equity dataset is missing or not loaded.');
+      return;
+    }
 
-    pairTrades.forEach(tr => {
-      const exitNet = dateToNet.get(tr.exit_date);
-      if (exitNet !== undefined) {
-        tradeX.push(tr.exit_date);
-        tradeY.push(exitNet);
-        tradeHover.push(
-          `<b>Trade Cycle Executed</b><br>` +
-          `Pair: ${STATE.activePair}<br>` +
-          `Entry: ${tr.entry_date} &bull; Exit: ${tr.exit_date}<br>` +
-          `Gross P&L: ₹${tr.gross_pnl.toFixed(2)}<br>` +
-          `Fees & Slippage: ₹${tr.cost.toFixed(2)}<br>` +
-          `Net P&L: ₹${tr.net_pnl.toFixed(2)}`
-        );
-      }
+    const { equity_curves, normalized_prices, trades } = STATE.data;
+    const eqData = equity_curves[STATE.activePair];
+    if (!eqData || !eqData.dates || !eqData.dates.length) {
+      showChartError('equityCurvesChart', `No Data for ${STATE.activePair}`, 'No equity curve series available for the selected contract pair.');
+      showChartError('drawdownChart', `No Data for ${STATE.activePair}`, 'No drawdown series available for the selected contract pair.');
+      return;
+    }
+
+    clearChartError('equityCurvesChart');
+
+    const c = getThemeColors();
+    const traces = [];
+
+    // 1. Gross Equity
+    traces.push({
+      x: eqData.dates,
+      y: eqData.equity_gross,
+      name: 'Gross P&L (Paper Frictionless)',
+      type: 'scatter',
+      mode: 'lines',
+      line: { color: c.accentGold, width: 2, dash: 'dot' },
+      hovertemplate: 'Gross P&L: ₹%{y:,.0f}<extra></extra>',
     });
 
-    if (tradeX.length > 0) {
-      traces.push({
-        x: tradeX,
-        y: tradeY,
-        name: 'Executed Trade Exits',
-        type: 'scatter',
-        mode: 'markers',
-        marker: {
-          symbol: 'diamond',
-          size: 12,
-          color: c.accentGoldBright,
-          line: { color: '#000', width: 1 },
-        },
-        customdata: tradeHover,
-        hovertemplate: '%{customdata}<extra></extra>',
-      });
+    // 2. Net Equity
+    traces.push({
+      x: eqData.dates,
+      y: eqData.equity_net,
+      name: 'Net P&L (After Costs & Slippage)',
+      type: 'scatter',
+      mode: 'lines',
+      line: { color: c.copperNeg, width: 3 },
+      hovertemplate: 'Net P&L: ₹%{y:,.0f}<extra></extra>',
+    });
+
+    // 3. Gold-Neutral Equity
+    traces.push({
+      x: eqData.dates,
+      y: eqData.equity_gold_neutral,
+      name: 'Gold-Neutral P&L (Beta Hedged)',
+      type: 'scatter',
+      mode: 'lines',
+      line: { color: c.verdigrisPos, width: 2 },
+      hovertemplate: 'Gold-Neutral: ₹%{y:,.0f}<extra></extra>',
+    });
+
+    // 4. Gold Benchmark Overlay
+    if (STATE.showGoldImpact && normalized_prices) {
+      const goldSeries = normalized_prices.filter(p => p.symbol === 'GOLDM' && eqData.dates.includes(p.date));
+      if (goldSeries.length) {
+        const basePrice = goldSeries[0].norm_close;
+        const normalizedGold = goldSeries.map(p => ((p.norm_close - basePrice) / basePrice) * 100);
+        traces.push({
+          x: goldSeries.map(p => p.date),
+          y: normalizedGold,
+          name: 'MCX Gold Benchmark Return (%)',
+          type: 'scatter',
+          mode: 'lines',
+          yaxis: 'y2',
+          line: { color: 'rgba(255, 190, 11, 0.4)', width: 1.5 },
+          hovertemplate: 'Gold Return: %{y:.2f}%<extra></extra>',
+        });
+      }
     }
+
+    // 5. Trade Execution Event Markers
+    const pairTrades = (trades && trades[STATE.activePair]) || [];
+    if (pairTrades.length > 0) {
+      const tradeX = [];
+      const tradeY = [];
+      const tradeHover = [];
+      const dateToNet = new Map(eqData.dates.map((d, i) => [d, eqData.equity_net[i]]));
+
+      pairTrades.forEach(tr => {
+        const exitNet = dateToNet.get(tr.exit_date);
+        if (exitNet !== undefined) {
+          tradeX.push(tr.exit_date);
+          tradeY.push(exitNet);
+          tradeHover.push(
+            `<b>Trade Cycle Executed</b><br>` +
+            `Pair: ${STATE.activePair}<br>` +
+            `Entry: ${tr.entry_date} &bull; Exit: ${tr.exit_date}<br>` +
+            `Gross P&L: ₹${tr.gross_pnl.toFixed(2)}<br>` +
+            `Fees & Slippage: ₹${tr.cost.toFixed(2)}<br>` +
+            `Net P&L: ₹${tr.net_pnl.toFixed(2)}`
+          );
+        }
+      });
+
+      if (tradeX.length > 0) {
+        traces.push({
+          x: tradeX,
+          y: tradeY,
+          name: 'Executed Trade Exits',
+          type: 'scatter',
+          mode: 'markers',
+          marker: {
+            symbol: 'diamond',
+            size: 12,
+            color: c.accentGoldBright,
+            line: { color: '#000', width: 1 },
+          },
+          customdata: tradeHover,
+          hovertemplate: '%{customdata}<extra></extra>',
+        });
+      }
+    }
+
+    const layout = {
+      paper_bgcolor: c.bgPaper,
+      plot_bgcolor: c.bgPlot,
+      font: { color: c.textMain, family: 'Inter' },
+      margin: { t: 20, r: 60, b: 60, l: 85 },
+      legend: { orientation: 'h', y: 1.15, x: 0.05, font: { color: c.textMain } },
+      xaxis: {
+        type: 'date',
+        gridcolor: c.borderBronze,
+        tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
+      },
+      yaxis: {
+        title: 'Cumulative P&L (INR)',
+        gridcolor: c.borderBronze,
+        tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
+      },
+      yaxis2: {
+        title: 'Underlying Gold Move (%)',
+        overlaying: 'y',
+        side: 'right',
+        showgrid: false,
+        tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
+      },
+    };
+
+    Plotly.react('equityCurvesChart', traces, layout, { responsive: true, displayModeBar: false });
+    hideChartSkeleton('equityCurvesChart');
+    STATE.chartsRendered.equityCurves = true;
+
+    // Render Underwater Drawdown Chart Below Equity
+    renderDrawdownChart(eqData, c);
+  } catch (err) {
+    console.error('Failed to render equity curves chart:', err);
+    showChartError('equityCurvesChart', 'Equity Curves Render Error', err.message, () => renderEquityCurveChart());
   }
-
-  const layout = {
-    paper_bgcolor: c.bgPaper,
-    plot_bgcolor: c.bgPlot,
-    font: { color: c.textMain, family: 'Inter' },
-    margin: { t: 20, r: 60, b: 60, l: 85 },
-    legend: { orientation: 'h', y: 1.15, x: 0.05, font: { color: c.textMain } },
-    xaxis: {
-      type: 'date',
-      gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
-    },
-    yaxis: {
-      title: 'Cumulative P&L (INR)',
-      gridcolor: c.borderBronze,
-      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
-    },
-    yaxis2: {
-      title: 'Underlying Gold Move (%)',
-      overlaying: 'y',
-      side: 'right',
-      showgrid: false,
-      tickfont: { family: 'JetBrains Mono', size: 12, color: c.textMuted },
-    },
-  };
-
-  Plotly.react('equityCurvesChart', traces, layout, { responsive: true, displayModeBar: false });
-  hideChartSkeleton('equityCurvesChart');
-
-  // Render Underwater Drawdown Chart Below Equity
-  renderDrawdownChart(eqData, c);
 }
 
 // ── 7. Breakeven Gauge ────────────────────────────────────────────────────
@@ -3598,6 +3732,11 @@ function showDataLoadError(err) {
     badge.textContent = 'DATA LOAD ERROR';
   }
 
+  const isFileProtocol = window.location.protocol === 'file:';
+  const detailMsg = isFileProtocol
+    ? 'Browser security blocks direct data fetching over file:// protocol. Run a local server (e.g. python -m http.server 8000 --directory web) and visit http://localhost:8000/app.html.'
+    : `Could not read web/data/auraspread_data.json (${err.message}). Ensure the quantitative pipeline has executed and the file is present.`;
+
   const errorCard = document.createElement('div');
   errorCard.className = 'scale-card';
   errorCard.style.textAlign = 'center';
@@ -3608,13 +3747,25 @@ function showDataLoadError(err) {
       Vault Archive Locked &bull; Data Feed Unreachable
     </h3>
     <p style="color: var(--text-secondary); max-width: 600px; margin: 0 auto 1.5rem;">
-      Could not read <code>web/data/auraspread_data.json</code> (${err.message}). Ensure the quantitative pipeline has executed and the file is present.
+      ${detailMsg}
     </p>
     <button class="btn-assay" onclick="window.location.reload();">
       ⟲ Retry Connection
     </button>
   `;
   main.prepend(errorCard);
+
+  // Show descriptive error in all chart containers rather than stuck skeletons
+  const chartContainers = [
+    { id: 'monthlyHeatmapWrap', name: 'Monthly Mispricing Heatmap' },
+    { id: 'termStructureChart', name: 'Term Structure Curve' },
+    { id: 'decompositionChart', name: 'Price Decomposition' },
+    { id: 'equityCurvesChart', name: 'Equity Curves' },
+    { id: 'drawdownChart', name: 'Underwater Drawdown' }
+  ];
+  chartContainers.forEach(({ id, name }) => {
+    showChartError(id, `${name} Unavailable`, detailMsg, () => window.location.reload());
+  });
 }
 
 // ── CSV Exporters ─────────────────────────────────────────────────────────
